@@ -12,7 +12,9 @@ annonce les morts et déclare les vainqueurs.
 
 ## Récupérer l'APK
 
-Chaque envoi de code lance l'action GitHub « Tests et APK ». L'APK se télécharge dans l'onglet
+Le plus simple : sur le téléphone, ouvrir la page *Releases* du dépôt (publication « Dernière version ») et télécharger `loup-garou.apk`. Elle est mise à jour à chaque envoi sur `main`.
+
+Chaque envoi de code lance aussi l'action GitHub « Tests et APK ». L'APK se trouve également dans l'onglet
 *Actions*, en bas de la page de la dernière exécution, sous *Artifacts* (`loup-garou-apk`).
 
 ## Construire en local

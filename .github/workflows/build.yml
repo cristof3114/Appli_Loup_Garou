@@ -5,6 +5,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,3 +31,16 @@ jobs:
         with:
           name: loup-garou-apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      # Sur main, l'APK est aussi publié en téléchargement direct (sans zip),
+      # dans la publication « derniere-version » du dépôt.
+      - name: Publier l'APK
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk loup-garou.apk
+          gh release delete derniere-version --yes --cleanup-tag || true
+          gh release create derniere-version loup-garou.apk \
+            --title "Dernière version" \
+            --notes "APK construit depuis le commit ${GITHUB_SHA::7}. Télécharge loup-garou.apk depuis le téléphone pour l'installer."
