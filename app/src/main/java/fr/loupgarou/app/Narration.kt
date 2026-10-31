@@ -1,84 +1,83 @@
 package fr.loupgarou.app
 
+import android.content.SharedPreferences
 import fr.loupgarou.engine.Appel
 import fr.loupgarou.engine.Camp
+import fr.loupgarou.engine.CauseDeMort
 import fr.loupgarou.engine.Etape
 import fr.loupgarou.engine.Moment
 
 /**
- * Textes du narrateur. Version provisoire en texte à l'écran : l'étape 3 les remplacera
- * par une banque de répliques plus fournie et lue par une voix pré-générée.
+ * Choisit ce que dit le narrateur à chaque étape, en puisant dans [Repliques]. Les répliques
+ * entendues récemment sont mémorisées d'une partie à l'autre pour éviter les redites.
  */
 object Narration {
-    private val dejaDites = ArrayDeque<String>()
+    private const val CLE = "dejaDites"
+    private const val MEMOIRE = 60
+
+    private var prefs: SharedPreferences? = null
+    private val dejaDites = ArrayDeque<Int>()
+
+    fun init(prefs: SharedPreferences) {
+        this.prefs = prefs
+        dejaDites.clear()
+        prefs.getString(CLE, "")!!.split(',').mapNotNull { it.toIntOrNull() }.forEach(dejaDites::addLast)
+    }
 
     /** Choisit une variante en évitant les répliques entendues récemment. */
-    private fun une(vararg variantes: String): String {
-        val fraiches = variantes.filter { it !in dejaDites }.ifEmpty { variantes.toList() }
+    private fun une(variantes: List<Replique>): Replique {
+        val fraiches = variantes.filter { it.son !in dejaDites }.ifEmpty { variantes }
         val choix = fraiches.random()
-        dejaDites.addLast(choix)
-        if (dejaDites.size > 30) dejaDites.removeFirst()
+        dejaDites.remove(choix.son)
+        dejaDites.addLast(choix.son)
+        while (dejaDites.size > MEMOIRE) dejaDites.removeFirst()
+        prefs?.edit()?.putString(CLE, dejaDites.joinToString(","))?.apply()
         return choix
     }
 
-    fun appel(appel: Appel): String = when (appel) {
-        Appel.VOLEUR -> une(
-            "Le Voleur se réveille. Les poches vides, la conscience aussi.",
-            "Voleur, ouvre les yeux. Deux cartes t'attendent, sers-toi sans honte.",
-        )
-        Appel.CUPIDON -> une(
-            "Cupidon se réveille. Choisis deux cœurs à lier… jusqu'à ce que la mort les sépare. Ensemble.",
-            "Cupidon, ouvre les yeux. Ce soir, tu fais des malheureux. Deux, précisément.",
-        )
-        Appel.AMOUREUX -> une(
-            "Les Amoureux se réveillent et se découvrent. Profitez-en, ça ne durera peut-être pas.",
-            "Amoureux, ouvrez les yeux et regardez-vous. Désormais, si l'un tombe, l'autre suit.",
-        )
-        Appel.VOYANTE -> une(
-            "La Voyante se réveille. Choisis l'âme que tu veux sonder.",
-            "Voyante, ouvre les yeux. Ta boule de cristal a faim de vérité.",
-            "La Voyante s'éveille. Qui cache quoi, ce soir ?",
-        )
-        Appel.LOUPS -> une(
-            "Les Loups-Garous se réveillent. Le dîner est servi, il reste à choisir le plat.",
-            "Loups-Garous, ouvrez les yeux. Le village dort, et il sent bon.",
-            "Les Loups-Garous s'éveillent. Concertez-vous en silence : qui ne verra pas l'aube ?",
-        )
-        Appel.SORCIERE -> une(
-            "La Sorcière se réveille. Deux fioles, un cadavre tout frais : à toi de voir.",
-            "Sorcière, ouvre les yeux. Sauver, empoisonner, ou retourner te coucher ?",
-        )
-    }
-
-    fun rendormir(): String = une(
-        "Rendors-toi, et repose l'appareil au centre.",
-        "Ferme les yeux. Repose l'appareil sans bruit.",
+    fun appel(appel: Appel): Replique = une(
+        when (appel) {
+            Appel.VOLEUR -> Repliques.voleur
+            Appel.CUPIDON -> Repliques.cupidon
+            Appel.AMOUREUX -> Repliques.amoureux
+            Appel.VOYANTE -> Repliques.voyante
+            Appel.LOUPS -> Repliques.loups
+            Appel.SORCIERE -> Repliques.sorciere
+        },
     )
 
-    fun annonce(etape: Etape.Annonce): String = when {
-        etape.moment == Moment.MATIN && etape.morts.isEmpty() -> une(
-            "Le village se réveille… au complet. Les loups ont eu une nuit difficile.",
-            "Le soleil se lève et, miracle, personne ne manque à l'appel.",
-        )
-        etape.moment == Moment.MATIN -> une(
-            "Le village se réveille. Enfin, presque tout le village.",
-            "Le soleil se lève sur une scène que personne n'oubliera. Surtout pas la victime.",
-            "Ce matin, le village pleure l'un des siens. Ou plusieurs.",
-        )
-        etape.moment == Moment.VOTE -> une(
-            "Le village a parlé. La corde aussi.",
-            "La sentence tombe. Le condamné aussi.",
-        )
-        else -> une(
-            "Le Chasseur a tiré. Il ne part pas seul.",
-            "Un dernier coup de fusil, et un voisin de moins.",
-        )
+    fun endort() = une(Repliques.endort)
+
+    fun rendormir() = une(Repliques.rendormir)
+
+    fun relanceDebat() = une(Repliques.relanceDebat)
+
+    /** Ce que dit le narrateur en arrivant sur une étape de jour (hors appels de nuit). */
+    fun jour(etape: Etape): List<Replique> = when (etape) {
+        is Etape.Annonce -> annonce(etape)
+        is Etape.TirDuChasseur -> listOf(une(Repliques.chasseur))
+        is Etape.SuccessionCapitaine -> listOf(une(Repliques.successionCapitaine))
+        Etape.ElectionCapitaine -> listOf(une(Repliques.electionCapitaine))
+        is Etape.Vote -> listOf(une(if (etape.revote) Repliques.egalite else Repliques.debutVote))
+        is Etape.DepartageCapitaine -> listOf(une(Repliques.departageCapitaine))
+        is Etape.Fin -> listOf(fin(etape.gagnant))
+        else -> emptyList()
     }
 
-    fun fin(camp: Camp): String = when (camp) {
-        Camp.VILLAGEOIS -> "Les Villageois l'emportent ! Le dernier Loup-Garou a rejoint ses victimes."
-        Camp.LOUPS -> "Les Loups-Garous l'emportent. Le village est calme, désormais. Très calme."
-        Camp.AMOUREUX -> "Les Amoureux l'emportent, seuls au monde. Ils l'ont bien cherché."
-        Camp.PERSONNE -> "Plus personne. Le village est désert, et les corbeaux ont gagné."
+    private fun annonce(etape: Etape.Annonce): List<Replique> {
+        val intro = when (etape.moment) {
+            Moment.MATIN -> une(if (etape.morts.isEmpty()) Repliques.matinPersonne else Repliques.matinMorts)
+            Moment.VOTE -> une(Repliques.condamne)
+            Moment.TIR_DU_CHASSEUR -> une(Repliques.tirDuChasseur)
+        }
+        val morts = etape.morts.flatMap { m ->
+            listOfNotNull(
+                if (m.cause == CauseDeMort.CHAGRIN) une(Repliques.chagrin) else null,
+                une(Repliques.revelation.getValue(m.role)),
+            )
+        }
+        return listOf(intro) + morts
     }
+
+    fun fin(camp: Camp): Replique = une(Repliques.fin.getValue(camp))
 }

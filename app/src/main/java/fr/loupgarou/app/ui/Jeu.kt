@@ -15,10 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import fr.loupgarou.app.Narration
 import fr.loupgarou.app.PartieViewModel
 import fr.loupgarou.engine.Action
-import fr.loupgarou.engine.Appel
 import fr.loupgarou.engine.CauseDeMort
 import fr.loupgarou.engine.Etape
 import fr.loupgarou.engine.Partie
@@ -32,17 +30,19 @@ fun EcranJeu(vm: PartieViewModel) {
     // La clé de version force un nouvel état local à chaque étape.
     val etape = remember(vm.version) { partie.etape }
     val jouer: (Action) -> Unit = vm::jouer
+    // Ce que le narrateur dit en arrivant sur l'étape, affiché tel quel.
+    val dit = vm.paroles.firstOrNull()?.texte.orEmpty()
 
     when (etape) {
-        is Etape.AppelFictif -> AppelDeNuit(etape.appel, vm.version, fictif = true, onFictifTermine = { jouer(Action.Ok) }) {}
-        is Etape.AppelVoleur -> AppelDeNuit(Appel.VOLEUR, vm.version) { Voleur(etape, jouer) }
-        is Etape.AppelCupidon -> AppelDeNuit(Appel.CUPIDON, vm.version) { Cupidon(partie, jouer) }
-        is Etape.ReveilAmoureux -> AppelDeNuit(Appel.AMOUREUX, vm.version) {
+        is Etape.AppelFictif -> AppelDeNuit(dit, vm.version, fictif = true, onFictifTermine = { jouer(Action.Ok) }) {}
+        is Etape.AppelVoleur -> AppelDeNuit(dit, vm.version) { Voleur(etape, jouer) }
+        is Etape.AppelCupidon -> AppelDeNuit(dit, vm.version) { Cupidon(partie, jouer) }
+        is Etape.ReveilAmoureux -> AppelDeNuit(dit, vm.version) {
             Titre("${partie.joueur(etape.a).nom} et ${partie.joueur(etape.b).nom} sont amoureux")
             Recit("Si l'un meurt, l'autre meurt de chagrin.")
-            GrosBouton(Narration.rendormir()) { jouer(Action.Ok) }
+            GrosBouton("Fermer les yeux") { jouer(Action.Ok) }
         }
-        is Etape.AppelVoyante -> AppelDeNuit(Appel.VOYANTE, vm.version) {
+        is Etape.AppelVoyante -> AppelDeNuit(dit, vm.version) {
             Titre("Qui veux-tu sonder ?")
             ChoixJoueur(partie.vivants().filter { it.id != etape.voyante }, modifier = Modifier.heightIn(max = 480.dp)) {
                 jouer(Action.Designation(it.id))
@@ -56,13 +56,13 @@ fun EcranJeu(vm: PartieViewModel) {
             }
             Page {
                 Titre("${partie.joueur(etape.cible).nom} est ${etape.role.nom}")
-                GrosBouton(Narration.rendormir()) { jouer(Action.Ok) }
+                GrosBouton("Fermer les yeux") { jouer(Action.Ok) }
             }
         }
-        is Etape.AppelLoups -> AppelDeNuit(Appel.LOUPS, vm.version) { Loups(partie, etape, jouer) }
-        is Etape.AppelSorciere -> AppelDeNuit(Appel.SORCIERE, vm.version) { Sorciere(partie, etape, jouer) }
+        is Etape.AppelLoups -> AppelDeNuit(dit, vm.version) { Loups(partie, etape, jouer) }
+        is Etape.AppelSorciere -> AppelDeNuit(dit, vm.version) { Sorciere(partie, etape, jouer) }
         is Etape.Annonce -> Page {
-            Recit(remember(vm.version) { Narration.annonce(etape) })
+            Paroles(vm)
             etape.morts.forEach { m ->
                 val chagrin = if (m.cause == CauseDeMort.CHAGRIN) ", mort de chagrin" else ""
                 Titre("${m.nom} était ${m.role.nom}$chagrin")
@@ -70,25 +70,29 @@ fun EcranJeu(vm: PartieViewModel) {
             GrosBouton("Continuer") { jouer(Action.Ok) }
         }
         is Etape.TirDuChasseur -> Page {
+            Paroles(vm)
             Titre("${partie.joueur(etape.chasseur).nom}, Chasseur, tu emportes quelqu'un avec toi")
             ChoixJoueur(partie.vivants(), modifier = Modifier.heightIn(max = 480.dp)) { jouer(Action.Designation(it.id)) }
         }
         is Etape.SuccessionCapitaine -> Page {
+            Paroles(vm)
             Titre("${partie.joueur(etape.capitaine).nom} désigne le nouveau Capitaine")
             ChoixJoueur(partie.vivants(), modifier = Modifier.heightIn(max = 480.dp)) { jouer(Action.Designation(it.id)) }
         }
         Etape.ElectionCapitaine -> Page {
+            Paroles(vm)
             Titre("Élisez votre Capitaine")
             Recit("Votez à main levée, puis touchez l'élu. Sa voix comptera double.")
             ChoixJoueur(partie.vivants(), modifier = Modifier.heightIn(max = 480.dp)) { jouer(Action.Designation(it.id)) }
         }
-        is Etape.Vote -> Vote(partie, etape, vm.version, jouer)
+        is Etape.Vote -> Vote(vm, partie, etape, jouer)
         is Etape.DepartageCapitaine -> Page {
+            Paroles(vm)
             Titre("Égalité. ${partie.joueur(etape.capitaine).nom}, Capitaine, tranche")
             ChoixJoueur(etape.exAequo.map(partie::joueur)) { jouer(Action.Designation(it.id)) }
         }
         is Etape.Fin -> Page {
-            Titre(Narration.fin(etape.gagnant))
+            Titre(dit)
             partie.joueurs.forEach { Text("${it.nom} : ${it.role.nom}", fontSize = 18.sp) }
             GrosBouton("Nouvelle partie") { vm.nouvellePartie() }
         }
@@ -102,17 +106,16 @@ fun EcranJeu(vm: PartieViewModel) {
  */
 @Composable
 private fun AppelDeNuit(
-    appel: Appel,
+    texte: String,
     version: Int,
     fictif: Boolean = false,
     onFictifTermine: () -> Unit = {},
     action: @Composable () -> Unit,
 ) {
     var ouvert by remember(version) { mutableStateOf(false) }
-    val texte = remember(version) { Narration.appel(appel) }
     if (fictif) {
         LaunchedEffect(version) {
-            delay(Random.nextLong(8_000, 16_000))
+            delay(Random.nextLong(14_000, 22_000))
             onFictifTermine()
         }
     }
@@ -214,11 +217,22 @@ private fun Sorciere(partie: Partie, etape: Etape.AppelSorciere, jouer: (Action)
 }
 
 @Composable
-private fun Vote(partie: Partie, etape: Etape.Vote, version: Int, jouer: (Action) -> Unit) {
+private fun Vote(vm: PartieViewModel, partie: Partie, etape: Etape.Vote, jouer: (Action) -> Unit) {
+    val version = vm.version
+    // Pendant le débat, le narrateur relance de temps en temps les indécis.
+    if (!etape.revote) {
+        LaunchedEffect(version) {
+            repeat(4) {
+                delay(75_000)
+                vm.relancerDebat()
+            }
+        }
+    }
     var modeEgalite by remember(version) { mutableStateOf(false) }
     var choisis by remember(version) { mutableStateOf(setOf<Int>()) }
     val candidats = etape.candidats.map(partie::joueur)
     Page {
+        Paroles(vm)
         Titre(if (etape.revote) "Revote entre les ex-æquo" else "Le village vote")
         if (!modeEgalite) {
             Recit("Votez à main levée, puis touchez le joueur désigné.")
@@ -237,4 +251,11 @@ private fun Vote(partie: Partie, etape: Etape.Vote, version: Int, jouer: (Action
             TextButton(onClick = { modeEgalite = false; choisis = emptySet() }) { Text("Annuler") }
         }
     }
+}
+
+/** Les paroles du narrateur pour l'étape en cours, avec de quoi les réentendre. */
+@Composable
+private fun Paroles(vm: PartieViewModel) {
+    vm.paroles.forEach { Recit(it.texte) }
+    if (vm.paroles.isNotEmpty()) TextButton(onClick = vm::repeter) { Text("Répéter") }
 }
