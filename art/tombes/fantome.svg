@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="56" viewBox="0 0 48 56">
+<defs><filter id="w" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="2"/></filter></defs>
+<g filter="url(#w)">
+<path d="M8,32 C8,6 40,6 40,32 L40,48 L34,43 L29,49 L24,43 L19,49 L14,43 L8,48 Z" fill="#f1e8d2" fill-opacity="0.9" stroke="#1b1f2c" stroke-width="1.2" stroke-opacity="0.6"/>
+<ellipse cx="18" cy="24" rx="2.6" ry="3.4" fill="#1b1f2c"/><ellipse cx="30" cy="24" rx="2.6" ry="3.4" fill="#1b1f2c"/>
+<ellipse cx="24" cy="33" rx="2.4" ry="3" fill="#1b1f2c" opacity="0.8"/>
+</g>
+</svg>

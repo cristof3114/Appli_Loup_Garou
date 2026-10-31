@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+<defs>
+<filter id="w" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="2.5"/></filter>
+<pattern id="h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2="4" stroke="#1e1a16" stroke-width="1" opacity="0.75"/></pattern>
+</defs>
+<g filter="url(#w)" stroke="#1e1a16" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="100" cy="100" r="94" fill="#ece0c2" stroke-width="3"/>
+<circle cx="100" cy="100" r="86" fill="none" stroke-width="1.2"/>
+<g stroke-width="2.4" fill="none">
+<path d="M30,160 Q90,140 170,152 L170,170 L30,170 Z" fill="url(#h)" stroke-width="2.4"/>
+<g transform="translate(26,22) scale(0.7)">
+<path d="M48,200 C50,170 54,140 66,118 L58,112 L68,108 L60,98 L72,96 L66,62 L84,80 L92,50 L100,78 C114,66 130,50 148,30 L156,32 L152,40 C142,52 132,62 124,72 L140,66 C130,82 120,92 114,100 L120,108 L112,112 L120,122 L110,126 L118,136 C112,160 116,180 120,200 Z" fill="#1e1a16" stroke-width="3"/>
+<ellipse cx="103" cy="84" rx="4" ry="2" transform="rotate(-35 103 84)" fill="#e9b44c" stroke="none"/>
+</g>
+</g>
+</g>
+</svg>

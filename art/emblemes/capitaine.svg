@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+<defs>
+<filter id="w" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="2.5"/></filter>
+<pattern id="h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2="4" stroke="#1e1a16" stroke-width="1" opacity="0.75"/></pattern>
+</defs>
+<g filter="url(#w)" stroke="#1e1a16" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="100" cy="100" r="94" fill="#ece0c2" stroke-width="3"/>
+<circle cx="100" cy="100" r="86" fill="none" stroke-width="1.2"/>
+<g stroke-width="2.4" fill="none">
+<path d="M78,46 L96,108 L110,104 L94,42 Z" fill="url(#h)" stroke-width="2.4"/>
+<path d="M122,46 L104,108 L90,104 L106,42 Z" fill="#ece0c2" stroke-width="2.4"/>
+<circle cx="100" cy="126" r="30" fill="#ece0c2" stroke-width="3"/>
+<circle cx="100" cy="126" r="24" fill="none" stroke-width="1.2"/>
+<path d="M100,108 L105,121 L119,121 L108,129 L112,143 L100,135 L88,143 L92,129 L81,121 L95,121 Z" fill="#1e1a16" stroke-width="1.5"/>
+</g>
+</g>
+</svg>

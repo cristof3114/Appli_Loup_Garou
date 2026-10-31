@@ -1,6 +1,10 @@
 package fr.loupgarou.app.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -30,13 +34,35 @@ import androidx.compose.ui.unit.sp
 import fr.loupgarou.engine.Joueur
 import kotlinx.coroutines.delay
 
-/** Page centrée, utilisée par tous les écrans de jeu. */
+/**
+ * Page des écrans de jeu : un panneau voilé en haut, qui laisse voir le village dessous.
+ * [bas], s'il est donné, se place tout en bas de l'écran, hors du panneau.
+ */
 @Composable
-fun Page(contenu: @Composable ColumnScope.() -> Unit) {
+fun Page(bas: (@Composable ColumnScope.() -> Unit)? = null, contenu: @Composable ColumnScope.() -> Unit) {
     Column(
-        Modifier.fillMaxSize().padding(24.dp),
+        Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+    ) {
+        Panneau(contenu = contenu)
+        if (bas != null) {
+            Spacer(Modifier.weight(1f))
+            bas()
+        }
+    }
+}
+
+/** Le panneau voilé, couleur de la nuit ou du jour, qui rend le texte lisible sur le décor. */
+@Composable
+fun Panneau(modifier: Modifier = Modifier, contenu: @Composable ColumnScope.() -> Unit) {
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(LocalEncre.current.voile)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp),
         content = contenu,
     )
 }

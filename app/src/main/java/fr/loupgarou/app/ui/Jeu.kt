@@ -1,5 +1,6 @@
 package fr.loupgarou.app.ui
 
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -144,13 +145,13 @@ private fun AppelDeNuit(
     }
     // Un double appui sur « Touche ici » validait sinon l'écran secret avant qu'il soit lu.
     AntiDoubleAppui(ouvert) {
-        Page {
-            if (!ouvert) {
-                Titre(texte)
-                if (!fictif) GrosBouton("Touche ici quand tu as les yeux ouverts") { ouvert = true }
-            } else {
-                action()
-            }
+        if (!ouvert) {
+            // Le récit en haut, le médaillon du rôle au milieu, le bouton à portée de pouce.
+            val bouton: (@Composable ColumnScope.() -> Unit)? =
+                if (fictif) null else { { GrosBouton("Touche ici quand tu as les yeux ouverts") { ouvert = true } } }
+            Page(bas = bouton) { Titre(texte) }
+        } else {
+            Page { action() }
         }
     }
 }

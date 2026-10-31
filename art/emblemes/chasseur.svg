@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+<defs>
+<filter id="w" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="2.5"/></filter>
+<pattern id="h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2="4" stroke="#1e1a16" stroke-width="1" opacity="0.75"/></pattern>
+</defs>
+<g filter="url(#w)" stroke="#1e1a16" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="100" cy="100" r="94" fill="#ece0c2" stroke-width="3"/>
+<circle cx="100" cy="100" r="86" fill="none" stroke-width="1.2"/>
+<g stroke-width="2.4" fill="none">
+<g transform="rotate(-38 100 104)">
+<path d="M26,98 L62,92 L74,97 L74,108 L62,107 L30,120 Q24,110 26,98 Z" fill="url(#h)" stroke-width="2.6"/>
+<rect x="74" y="94" width="30" height="10" rx="2" fill="#ece0c2" stroke-width="2.6"/>
+<rect x="104" y="96" width="72" height="5" fill="#ece0c2" stroke-width="2.4"/>
+<rect x="104" y="101" width="50" height="4" fill="url(#h)" stroke-width="1.8"/>
+<path d="M84,104 Q84,116 96,114 L96,104" stroke-width="2"/>
+<line x1="88" y1="104" x2="90" y2="110" stroke-width="2"/>
+<line x1="172" y1="96" x2="172" y2="92" stroke-width="2"/>
+</g>
+<path d="M150,138 l4,-10 M160,146 l10,-4 M148,150 l8,6" stroke-width="2"/>
+</g>
+</g>
+</svg>

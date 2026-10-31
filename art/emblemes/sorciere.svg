@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+<defs>
+<filter id="w" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="2.5"/></filter>
+<pattern id="h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2="4" stroke="#1e1a16" stroke-width="1" opacity="0.75"/></pattern>
+</defs>
+<g filter="url(#w)" stroke="#1e1a16" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="100" cy="100" r="94" fill="#ece0c2" stroke-width="3"/>
+<circle cx="100" cy="100" r="86" fill="none" stroke-width="1.2"/>
+<g stroke-width="2.4" fill="none">
+<path d="M58,108 Q56,158 100,158 Q144,158 142,108 Z" fill="url(#h)"/>
+<ellipse cx="100" cy="108" rx="46" ry="9" fill="#ece0c2"/>
+<path d="M72,156 L66,168 M128,156 L134,168 M100,160 L100,170"/>
+<circle cx="88" cy="96" r="6" fill="#ece0c2"/><circle cx="108" cy="90" r="8" fill="#ece0c2"/><circle cx="96" cy="76" r="4" fill="#ece0c2"/>
+<path d="M114,74 q-8,-10 0,-18 q8,-8 0,-18" stroke-width="2"/>
+<circle cx="56" cy="70" r="12" fill="#ece0c2"/><path d="M52,58 L52,50 L60,50 L60,58" fill="#ece0c2"/><rect x="51" y="44" width="10" height="6" fill="#1e1a16"/>
+<path d="M46,72 Q56,66 66,72 Q66,82 56,82 Q46,82 46,72 Z" fill="url(#h)" stroke-width="1.5"/>
+<circle cx="144" cy="70" r="12" fill="#1e1a16"/><path d="M140,58 L140,50 L148,50 L148,58" fill="#ece0c2"/><rect x="139" y="44" width="10" height="6" fill="#1e1a16"/>
+<circle cx="140" cy="68" r="2.4" fill="#ece0c2" stroke="none"/><circle cx="148" cy="68" r="2.4" fill="#ece0c2" stroke="none"/><path d="M141,75 L147,75" stroke="#ece0c2" stroke-width="1.5"/>
+</g>
+</g>
+</svg>
