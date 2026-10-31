@@ -7,6 +7,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.random.Random
 
 class PartieTest {
 
@@ -232,5 +233,132 @@ class PartieTest {
         assertNull(Setup.cartesDuCentre(paquet, listOf(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VOLEUR)))
         assertEquals(emptyList(), Setup.avertissements(Setup.compositionProposee(8), 8))
         assertEquals(listOf("Il faut au moins 2 Loups-Garous"), Setup.avertissements(listOf(Role.LOUP_GAROU, Role.VOYANTE, Role.VILLAGEOIS, Role.VILLAGEOIS), 4))
+    }
+
+    // --- Sorcière : elle doit avoir le choix chaque nuit où elle est vivante ---
+
+    @Test
+    fun `la sorciere voit la petite fille surprise comme victime et peut la sauver`() {
+        val p = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.PETITE_FILLE, Role.SORCIERE, Role.VILLAGEOIS)
+        p.jusqua<Etape.AppelLoups>()
+        p.jouer(Action.ChoixLoups(4, petiteFilleSurprise = 2))
+        assertEquals(Etape.AppelSorciere(3, 2, peutGuerir = true, peutEmpoisonner = true), p.etape)
+        p.jouer(Action.ChoixSorciere(guerir = true, empoisonner = null))
+        assertEquals(emptyList(), (p.etape as Etape.Annonce).morts)
+    }
+
+    @Test
+    fun `la sorciere peut sauver un loup devore par les loups`() {
+        val p = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.SORCIERE, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        p.jusqua<Etape.AppelLoups>()
+        p.jouer(Action.ChoixLoups(1))
+        assertEquals(Etape.AppelSorciere(2, 1, peutGuerir = true, peutEmpoisonner = true), p.etape)
+        p.jouer(Action.ChoixSorciere(guerir = true, empoisonner = null))
+        assertEquals(emptyList(), (p.etape as Etape.Annonce).morts)
+    }
+
+    @Test
+    fun `sauver un amoureux sauve aussi l'autre`() {
+        val p = partie(Role.CUPIDON, Role.LOUP_GAROU, Role.LOUP_GAROU, Role.SORCIERE, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        p.jouer(Action.ChoixCupidon(3, 4))
+        p.jusqua<Etape.AppelLoups>()
+        p.jouer(Action.ChoixLoups(4))
+        assertEquals(Etape.AppelSorciere(3, 4, peutGuerir = true, peutEmpoisonner = true), p.etape)
+        p.jouer(Action.ChoixSorciere(guerir = true, empoisonner = null))
+        assertEquals(emptyList(), (p.etape as Etape.Annonce).morts)
+    }
+
+    @Test
+    fun `le voleur qui prend la sorciere est vraiment appele`() {
+        val p = partie(
+            Role.VOLEUR, Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS,
+            centre = listOf(Role.SORCIERE, Role.VILLAGEOIS),
+        )
+        p.jouer(Action.ChoixVoleur(Role.SORCIERE))
+        p.jusqua<Etape.AppelLoups>()
+        p.jouer(Action.ChoixLoups(3))
+        assertEquals(Etape.AppelSorciere(0, 3, peutGuerir = true, peutEmpoisonner = true), p.etape)
+    }
+
+    @Test
+    fun `chaque potion reste disponible tant qu'elle n'a pas servi`() {
+        val p = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.SORCIERE, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        p.jusqua<Etape.AppelLoups>()
+        p.jouer(Action.ChoixLoups(3))
+        p.jouer(Action.ChoixSorciere(guerir = false, empoisonner = null)) // nuit 1 : rien
+        p.ok(); p.jouer(Action.Designation(2)); p.jouer(Action.Elimination(4)); p.ok()
+        p.jouer(Action.ChoixLoups(5))
+        assertEquals(Etape.AppelSorciere(2, 5, peutGuerir = true, peutEmpoisonner = true), p.etape)
+        p.jouer(Action.ChoixSorciere(guerir = true, empoisonner = null)) // nuit 2 : guérison
+        p.ok(); p.jouer(Action.Elimination(6)); p.ok()
+        p.jouer(Action.ChoixLoups(5))
+        // Nuit 3 : la guérison a servi, le poison reste.
+        assertEquals(Etape.AppelSorciere(2, 5, peutGuerir = false, peutEmpoisonner = true), p.etape)
+    }
+
+    /**
+     * Des centaines de parties jouées au hasard : chaque nuit où un joueur vivant tient la Sorcière,
+     * elle doit être appelée, voir la victime des loups, et garder chaque potion encore pleine.
+     */
+    @Test
+    fun `parties au hasard, la sorciere vivante a toujours le choix`() {
+        val speciaux = listOf(Role.VOYANTE, Role.CUPIDON, Role.PETITE_FILLE, Role.CHASSEUR)
+        repeat(500) { graine ->
+            val r = Random(graine)
+            val avecVoleur = r.nextBoolean()
+            val roles = (listOf(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.SORCIERE) +
+                speciaux.filter { r.nextBoolean() } +
+                List(r.nextInt(1, 4)) { Role.VILLAGEOIS } +
+                (if (avecVoleur) listOf(Role.VOLEUR, Role.VILLAGEOIS, Role.VILLAGEOIS) else emptyList())).shuffled(r)
+            val centre = if (avecVoleur) roles.filter { it != Role.VOLEUR }.takeLast(2) else emptyList()
+            val enMain = roles.toMutableList().apply { centre.forEach { remove(it) } }
+            val p = Partie(enMain.mapIndexed { i, role -> Joueur(i, "J$i", role) }, roles, centre)
+
+            var nuitVerifiee = 0
+            var sorciereAppelee = false
+            var sorciereVivante = false
+            repeat(300) {
+                val e = p.etape
+                if (e is Etape.Fin) return@repeat
+                // Une nuit vient de se terminer : la Sorcière vivante devait être appelée.
+                if (e is Etape.Annonce && e.moment == Moment.MATIN && nuitVerifiee < p.nuit) {
+                    nuitVerifiee = p.nuit
+                    assertEquals(sorciereVivante, sorciereAppelee, "Graine $graine, nuit ${p.nuit}")
+                    sorciereAppelee = false
+                }
+                val vivants = p.vivants().map { it.id }
+                when (e) {
+                    is Etape.AppelVoleur -> p.jouer(Action.ChoixVoleur(if (e.doitPrendreLoup) Role.LOUP_GAROU else (e.cartes + null).random(r)))
+                    is Etape.AppelCupidon -> vivants.shuffled(r).let { p.jouer(Action.ChoixCupidon(it[0], it[1])) }
+                    is Etape.AppelVoyante -> p.jouer(Action.Designation((vivants - e.voyante).random(r)))
+                    is Etape.AppelLoups -> {
+                        // Personne ne meurt avant le matin : qui tient la Sorcière maintenant la tient à son appel.
+                        sorciereVivante = p.vivants().any { it.role == Role.SORCIERE }
+                        p.jouer(Action.ChoixLoups(vivants.random(r), vivants.random(r).takeIf { r.nextInt(4) == 0 }))
+                    }
+                    is Etape.AppelSorciere -> {
+                        sorciereAppelee = true
+                        assertEquals(Role.SORCIERE, p.joueur(e.sorciere).role, "Graine $graine")
+                        assertTrue(p.joueur(e.sorciere).vivant, "Graine $graine")
+                        val victime = e.victime
+                        assertTrue(victime != null && p.joueur(victime).vivant, "Graine $graine : pas de victime montrée")
+                        assertEquals(p.potionGuerison, e.peutGuerir, "Graine $graine : guérison")
+                        assertEquals(p.potionPoison, e.peutEmpoisonner, "Graine $graine : poison")
+                        p.jouer(Action.ChoixSorciere(e.peutGuerir && r.nextInt(3) == 0, vivants.random(r).takeIf { e.peutEmpoisonner && r.nextInt(3) == 0 }))
+                    }
+                    is Etape.AppelFictif -> {
+                        if (e.appel == Appel.SORCIERE) {
+                            assertTrue(p.joueurs.none { it.role == Role.SORCIERE }, "Graine $graine : appel fictif alors qu'un joueur est Sorcière")
+                        }
+                        p.ok()
+                    }
+                    is Etape.ReveilAmoureux, is Etape.VisionVoyante, is Etape.Annonce -> p.ok()
+                    is Etape.TirDuChasseur, is Etape.SuccessionCapitaine, Etape.ElectionCapitaine, is Etape.DepartageCapitaine ->
+                        p.jouer(Action.Designation(if (e is Etape.DepartageCapitaine) e.exAequo.random(r) else vivants.random(r)))
+                    is Etape.Vote -> p.jouer(Action.Elimination(e.candidats.random(r)))
+                    is Etape.Fin -> Unit
+                }
+            }
+        }
     }
 }

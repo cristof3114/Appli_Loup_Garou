@@ -1,6 +1,13 @@
 package fr.loupgarou.app.ui
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.TextButton
@@ -13,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.loupgarou.app.PartieViewModel
@@ -34,7 +42,7 @@ fun EcranJeu(vm: PartieViewModel) {
     val dit = vm.paroles.firstOrNull()?.texte.orEmpty()
 
     when (etape) {
-        is Etape.AppelFictif -> AppelDeNuit(dit, vm.version, fictif = true, onFictifTermine = { jouer(Action.Ok) }) {}
+        is Etape.AppelFictif -> AppelDeNuit(dit, vm.version, fictif = true, onFictifTermine = { vm.jouerSi(etape, Action.Ok) }) {}
         is Etape.AppelVoleur -> AppelDeNuit(dit, vm.version) { Voleur(etape, jouer) }
         is Etape.AppelCupidon -> AppelDeNuit(dit, vm.version) { Cupidon(partie, jouer) }
         is Etape.ReveilAmoureux -> AppelDeNuit(dit, vm.version) {
@@ -52,7 +60,7 @@ fun EcranJeu(vm: PartieViewModel) {
             // Le rôle s'affiche 5 secondes puis l'écran se referme tout seul.
             LaunchedEffect(vm.version) {
                 delay(5_000)
-                jouer(Action.Ok)
+                vm.jouerSi(etape, Action.Ok)
             }
             Page {
                 Titre("${partie.joueur(etape.cible).nom} est ${etape.role.nom}")
@@ -113,6 +121,15 @@ private fun AppelDeNuit(
     action: @Composable () -> Unit,
 ) {
     var ouvert by remember(version) { mutableStateOf(false) }
+    // Juste après l'ouverture, on ignore les touches un court instant : un double appui sur
+    // « Touche ici » validait sinon l'écran secret avant que le joueur ait pu le lire.
+    var pret by remember(version) { mutableStateOf(false) }
+    if (ouvert) {
+        LaunchedEffect(version) {
+            delay(800)
+            pret = true
+        }
+    }
     if (fictif) {
         LaunchedEffect(version) {
             delay(Random.nextLong(14_000, 22_000))
@@ -124,7 +141,21 @@ private fun AppelDeNuit(
             Titre(texte)
             if (!fictif) GrosBouton("Touche ici quand tu as les yeux ouverts") { ouvert = true }
         } else {
-            action()
+            Box {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) { action() }
+                if (!pret) {
+                    Box(
+                        Modifier.matchParentSize().pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) awaitPointerEvent().changes.forEach { it.consume() }
+                            }
+                        },
+                    )
+                }
+            }
         }
     }
 }
@@ -180,6 +211,11 @@ private fun Loups(partie: Partie, etape: Etape.AppelLoups, jouer: (Action) -> Un
     }
 }
 
+/**
+ * Écran secret de la Sorcière. Chaque potion encore pleine est un gros bouton bien visible
+ * (une case à cocher, trop petite, passait souvent inaperçue), et le bouton final dit
+ * clairement ce qui va se passer.
+ */
 @Composable
 private fun Sorciere(partie: Partie, etape: Etape.AppelSorciere, jouer: (Action) -> Unit) {
     var guerir by remember { mutableStateOf(false) }
@@ -191,29 +227,37 @@ private fun Sorciere(partie: Partie, etape: Etape.AppelSorciere, jouer: (Action)
             poison = it.id
             choisirPoison = false
         }
+        TextButton(onClick = { choisirPoison = false }) { Text("Retour", fontSize = 18.sp) }
         return
     }
-    Titre(etape.victime?.let { "Les loups ont choisi ${partie.joueur(it).nom}" } ?: "Personne n'a été attaqué")
-    if (etape.peutGuerir) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = guerir, onCheckedChange = { guerir = it })
-            Text("Utiliser la potion de guérison", fontSize = 18.sp)
-        }
-    } else {
-        Recit("Potion de guérison déjà utilisée.")
+    val victime = etape.victime?.let(partie::joueur)
+    Titre(victime?.let { "Les loups ont choisi ${it.nom}" } ?: "Personne n'a été attaqué")
+    when {
+        etape.peutGuerir && victime != null ->
+            Bascule(if (guerir) "Sauver ${victime.nom} ✓" else "Sauver ${victime.nom}", guerir) { guerir = !guerir }
+        !partie.potionGuerison -> Recit("Ta potion de guérison est déjà utilisée.")
     }
     if (etape.peutEmpoisonner) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = poison != null, onCheckedChange = { if (it) choisirPoison = true else poison = null })
-            Text(
-                poison?.let { "Empoisonner ${partie.joueur(it).nom}" } ?: "Utiliser la potion de poison",
-                fontSize = 18.sp,
-            )
+        Bascule(poison?.let { "Empoisonner ${partie.joueur(it).nom}" } ?: "Empoisonner quelqu'un", poison != null) {
+            choisirPoison = true
         }
+        if (poison != null) TextButton(onClick = { poison = null }) { Text("Ne plus empoisonner", fontSize = 18.sp) }
     } else {
-        Recit("Potion de poison déjà utilisée.")
+        Recit("Ta potion de poison est déjà utilisée.")
     }
-    GrosBouton("Valider") { jouer(Action.ChoixSorciere(guerir, poison)) }
+    val rien = !guerir && poison == null
+    GrosBouton(if (rien) "Ne rien faire cette nuit" else "Valider") { jouer(Action.ChoixSorciere(guerir, poison)) }
+}
+
+/** Gros bouton à deux états : plein quand il est choisi, en contour sinon. */
+@Composable
+private fun Bascule(texte: String, choisi: Boolean, onClick: () -> Unit) {
+    val modifier = Modifier.fillMaxWidth()
+    if (choisi) {
+        Button(onClick = onClick, modifier = modifier) { Text(texte, fontSize = 20.sp, modifier = Modifier.padding(8.dp)) }
+    } else {
+        OutlinedButton(onClick = onClick, modifier = modifier) { Text(texte, fontSize = 20.sp, modifier = Modifier.padding(8.dp)) }
+    }
 }
 
 @Composable

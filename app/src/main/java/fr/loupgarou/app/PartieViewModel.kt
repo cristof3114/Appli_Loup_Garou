@@ -112,6 +112,15 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
         version++
     }
 
+    /**
+     * Joue [action] seulement si la partie est encore sur [etape]. Sert aux minuteries (vision de
+     * la Voyante, appel fictif) : si un joueur a déjà avancé à la main, elles ne doivent pas
+     * valider l'écran suivant à sa place.
+     */
+    fun jouerSi(etape: Etape, action: Action) {
+        if (partie?.etape === etape) jouer(action)
+    }
+
     /** Relance le débat, sauf si le narrateur est déjà en train de parler. */
     fun relancerDebat() {
         if (!voix.parle) voix.dire(listOf(Narration.relanceDebat()))
