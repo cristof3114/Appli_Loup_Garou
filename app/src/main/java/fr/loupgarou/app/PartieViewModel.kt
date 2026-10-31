@@ -2,6 +2,8 @@ package fr.loupgarou.app
 
 import android.app.Application
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -42,6 +44,15 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
     /** Ce que le narrateur vient de dire pour l'étape en cours, affiché à l'écran. */
     var paroles by mutableStateOf<List<Replique>>(emptyList())
         private set
+
+    /**
+     * Vrai pendant qu'un joueur se rendort : l'écran reste neutre, sans bouton, le temps que la
+     * voix le renvoie au lit et qu'un silence passe avant l'appel suivant.
+     */
+    var enTransition by mutableStateOf(false)
+        private set
+    private val minuterie = Handler(Looper.getMainLooper())
+    private var jetonTransition = 0
 
     /** Incrémenté à chaque action pour redessiner l'écran de jeu. */
     var version by mutableIntStateOf(0)
@@ -112,6 +123,15 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
         version++
     }
 
+    /**
+     * Joue [action] seulement si la partie est encore sur [etape]. Sert aux minuteries (vision de
+     * la Voyante, appel fictif) : si un joueur a déjà avancé à la main, elles ne doivent pas
+     * valider l'écran suivant à sa place.
+     */
+    fun jouerSi(etape: Etape, action: Action) {
+        if (partie?.etape === etape) jouer(action)
+    }
+
     /** Relance le débat, sauf si le narrateur est déjà en train de parler. */
     fun relancerDebat() {
         if (!voix.parle) voix.dire(listOf(Narration.relanceDebat()))
@@ -137,7 +157,19 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
             apres is Etape.VisionVoyante -> emptyList()
             else -> Narration.jour(apres)
         }
-        voix.dire(dit + paroles)
+        commencerTransition(dit, paroles)
+    }
+
+    private fun commencerTransition(transition: List<Replique>, ensuite: List<Replique>) {
+        val jeton = ++jetonTransition
+        val finir = {
+            // Seule la transition en cours peut se terminer, et une seule fois.
+            if (jeton == jetonTransition && enTransition) enTransition = false
+        }
+        enTransition = transition.isNotEmpty()
+        voix.dire(transition, PAUSE_TRANSITION_MS, ensuite) { finir() }
+        // Filet de sécurité si le son ne se termine jamais : l'écran ne reste pas bloqué.
+        if (enTransition) minuterie.postDelayed({ finir() }, SECURITE_TRANSITION_MS)
     }
 
     private fun deNuit(etape: Etape) = appelDe(etape) != null || etape is Etape.VisionVoyante
@@ -154,13 +186,22 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     override fun onCleared() {
+        minuterie.removeCallbacksAndMessages(null)
         voix.arreter()
     }
 
     fun nouvellePartie() {
+        jetonTransition++
+        enTransition = false
         voix.arreter()
         paroles = emptyList()
         partie = null
         ecran = Ecran.PREPARATION
+    }
+
+    private companion object {
+        /** Silence entre « rendors-toi » et l'appel suivant. */
+        const val PAUSE_TRANSITION_MS = 2_500L
+        const val SECURITE_TRANSITION_MS = 20_000L
     }
 }

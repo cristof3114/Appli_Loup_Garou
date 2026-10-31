@@ -1,8 +1,10 @@
 package fr.loupgarou.app.ui
 
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,7 +13,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,8 +34,13 @@ fun EcranJeu(vm: PartieViewModel) {
     // Ce que le narrateur dit en arrivant sur l'étape, affiché tel quel.
     val dit = vm.paroles.firstOrNull()?.texte.orEmpty()
 
-    when (etape) {
-        is Etape.AppelFictif -> AppelDeNuit(dit, vm.version, fictif = true, onFictifTermine = { jouer(Action.Ok) }) {}
+    if (vm.enTransition) {
+        // Le temps que le joueur se rendorme et repose l'appareil avant l'appel suivant.
+        Page { Titre(if (appelDeNuit(etape)) "Chut… le village dort." else "La nuit s'achève…") }
+        return
+    }
+    AntiDoubleAppui(vm.version) { when (etape) {
+        is Etape.AppelFictif -> AppelDeNuit(dit, vm.version, fictif = true, onFictifTermine = { vm.jouerSi(etape, Action.Ok) }) {}
         is Etape.AppelVoleur -> AppelDeNuit(dit, vm.version) { Voleur(etape, jouer) }
         is Etape.AppelCupidon -> AppelDeNuit(dit, vm.version) { Cupidon(partie, jouer) }
         is Etape.ReveilAmoureux -> AppelDeNuit(dit, vm.version) {
@@ -44,15 +50,18 @@ fun EcranJeu(vm: PartieViewModel) {
         }
         is Etape.AppelVoyante -> AppelDeNuit(dit, vm.version) {
             Titre("Qui veux-tu sonder ?")
-            ChoixJoueur(partie.vivants().filter { it.id != etape.voyante }, modifier = Modifier.heightIn(max = 480.dp)) {
-                jouer(Action.Designation(it.id))
-            }
+            DesignerJoueur(
+                partie.vivants().filter { it.id != etape.voyante },
+                vm.version,
+                { "Sonder ${it.nom}" },
+                Modifier.heightIn(max = 420.dp),
+            ) { jouer(Action.Designation(it)) }
         }
         is Etape.VisionVoyante -> {
-            // Le rôle s'affiche 5 secondes puis l'écran se referme tout seul.
+            // Le rôle s'affiche 10 secondes puis l'écran se referme tout seul.
             LaunchedEffect(vm.version) {
-                delay(5_000)
-                jouer(Action.Ok)
+                delay(10_000)
+                vm.jouerSi(etape, Action.Ok)
             }
             Page {
                 Titre("${partie.joueur(etape.cible).nom} est ${etape.role.nom}")
@@ -72,31 +81,45 @@ fun EcranJeu(vm: PartieViewModel) {
         is Etape.TirDuChasseur -> Page {
             Paroles(vm)
             Titre("${partie.joueur(etape.chasseur).nom}, Chasseur, tu emportes quelqu'un avec toi")
-            ChoixJoueur(partie.vivants(), modifier = Modifier.heightIn(max = 480.dp)) { jouer(Action.Designation(it.id)) }
+            DesignerJoueur(partie.vivants(), vm.version, { "Tirer sur ${it.nom}" }, Modifier.heightIn(max = 420.dp)) {
+                jouer(Action.Designation(it))
+            }
         }
         is Etape.SuccessionCapitaine -> Page {
             Paroles(vm)
             Titre("${partie.joueur(etape.capitaine).nom} désigne le nouveau Capitaine")
-            ChoixJoueur(partie.vivants(), modifier = Modifier.heightIn(max = 480.dp)) { jouer(Action.Designation(it.id)) }
+            DesignerJoueur(partie.vivants(), vm.version, { "${it.nom} devient Capitaine" }, Modifier.heightIn(max = 420.dp)) {
+                jouer(Action.Designation(it))
+            }
         }
         Etape.ElectionCapitaine -> Page {
             Paroles(vm)
             Titre("Élisez votre Capitaine")
             Recit("Votez à main levée, puis touchez l'élu. Sa voix comptera double.")
-            ChoixJoueur(partie.vivants(), modifier = Modifier.heightIn(max = 480.dp)) { jouer(Action.Designation(it.id)) }
+            DesignerJoueur(partie.vivants(), vm.version, { "Élire ${it.nom}" }, Modifier.heightIn(max = 420.dp)) {
+                jouer(Action.Designation(it))
+            }
         }
         is Etape.Vote -> Vote(vm, partie, etape, jouer)
         is Etape.DepartageCapitaine -> Page {
             Paroles(vm)
             Titre("Égalité. ${partie.joueur(etape.capitaine).nom}, Capitaine, tranche")
-            ChoixJoueur(etape.exAequo.map(partie::joueur)) { jouer(Action.Designation(it.id)) }
+            DesignerJoueur(etape.exAequo.map(partie::joueur), vm.version, { "Éliminer ${it.nom}" }) {
+                jouer(Action.Designation(it))
+            }
         }
         is Etape.Fin -> Page {
             Titre(dit)
             partie.joueurs.forEach { Text("${it.nom} : ${it.role.nom}", fontSize = 18.sp) }
             GrosBouton("Nouvelle partie") { vm.nouvellePartie() }
         }
-    }
+    } }
+}
+
+private fun appelDeNuit(etape: Etape) = when (etape) {
+    is Etape.AppelVoleur, is Etape.AppelCupidon, is Etape.ReveilAmoureux, is Etape.AppelVoyante,
+    is Etape.VisionVoyante, is Etape.AppelLoups, is Etape.AppelSorciere, is Etape.AppelFictif -> true
+    else -> false
 }
 
 /**
@@ -119,12 +142,15 @@ private fun AppelDeNuit(
             onFictifTermine()
         }
     }
-    Page {
-        if (!ouvert) {
-            Titre(texte)
-            if (!fictif) GrosBouton("Touche ici quand tu as les yeux ouverts") { ouvert = true }
-        } else {
-            action()
+    // Un double appui sur « Touche ici » validait sinon l'écran secret avant qu'il soit lu.
+    AntiDoubleAppui(ouvert) {
+        Page {
+            if (!ouvert) {
+                Titre(texte)
+                if (!fictif) GrosBouton("Touche ici quand tu as les yeux ouverts") { ouvert = true }
+            } else {
+                action()
+            }
         }
     }
 }
@@ -161,12 +187,10 @@ private fun Loups(partie: Partie, etape: Etape.AppelLoups, jouer: (Action) -> Un
         Titre("Qui dévorez-vous ?")
         ChoixJoueur(partie.vivants(), setOfNotNull(victime), Modifier.heightIn(max = 380.dp)) { victime = it.id }
         if (Role.PETITE_FILLE in partie.paquet) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = surprise != null, onCheckedChange = { signalerPetiteFille = it; if (!it) surprise = null })
-                Text(
-                    if (surprise == null) "Nous avons surpris la Petite fille" else "Surprise : ${partie.joueur(surprise!!).nom}",
-                )
-            }
+            Bascule(
+                surprise?.let { "Petite fille surprise : ${partie.joueur(it).nom}" } ?: "Nous avons surpris la Petite fille",
+                surprise != null,
+            ) { if (surprise == null) signalerPetiteFille = true else surprise = null }
         }
         GrosBouton("Valider", actif = victime != null) {
             jouer(Action.ChoixLoups(victime!!, surprise))
@@ -177,9 +201,15 @@ private fun Loups(partie: Partie, etape: Etape.AppelLoups, jouer: (Action) -> Un
             surprise = it.id
             signalerPetiteFille = false
         }
+        TextButton(onClick = { signalerPetiteFille = false }) { Text("Retour", fontSize = 18.sp) }
     }
 }
 
+/**
+ * Écran secret de la Sorcière. Chaque potion encore pleine est un gros bouton bien visible
+ * (une case à cocher, trop petite, passait souvent inaperçue), et le bouton final dit
+ * clairement ce qui va se passer.
+ */
 @Composable
 private fun Sorciere(partie: Partie, etape: Etape.AppelSorciere, jouer: (Action) -> Unit) {
     var guerir by remember { mutableStateOf(false) }
@@ -191,29 +221,37 @@ private fun Sorciere(partie: Partie, etape: Etape.AppelSorciere, jouer: (Action)
             poison = it.id
             choisirPoison = false
         }
+        TextButton(onClick = { choisirPoison = false }) { Text("Retour", fontSize = 18.sp) }
         return
     }
-    Titre(etape.victime?.let { "Les loups ont choisi ${partie.joueur(it).nom}" } ?: "Personne n'a été attaqué")
-    if (etape.peutGuerir) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = guerir, onCheckedChange = { guerir = it })
-            Text("Utiliser la potion de guérison", fontSize = 18.sp)
-        }
-    } else {
-        Recit("Potion de guérison déjà utilisée.")
+    val victime = etape.victime?.let(partie::joueur)
+    Titre(victime?.let { "Les loups ont choisi ${it.nom}" } ?: "Personne n'a été attaqué")
+    when {
+        etape.peutGuerir && victime != null ->
+            Bascule(if (guerir) "Sauver ${victime.nom} ✓" else "Sauver ${victime.nom}", guerir) { guerir = !guerir }
+        !partie.potionGuerison -> Recit("Ta potion de guérison est déjà utilisée.")
     }
     if (etape.peutEmpoisonner) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = poison != null, onCheckedChange = { if (it) choisirPoison = true else poison = null })
-            Text(
-                poison?.let { "Empoisonner ${partie.joueur(it).nom}" } ?: "Utiliser la potion de poison",
-                fontSize = 18.sp,
-            )
+        Bascule(poison?.let { "Empoisonner ${partie.joueur(it).nom}" } ?: "Empoisonner quelqu'un", poison != null) {
+            choisirPoison = true
         }
+        if (poison != null) TextButton(onClick = { poison = null }) { Text("Ne plus empoisonner", fontSize = 18.sp) }
     } else {
-        Recit("Potion de poison déjà utilisée.")
+        Recit("Ta potion de poison est déjà utilisée.")
     }
-    GrosBouton("Valider") { jouer(Action.ChoixSorciere(guerir, poison)) }
+    val rien = !guerir && poison == null
+    GrosBouton(if (rien) "Ne rien faire cette nuit" else "Valider") { jouer(Action.ChoixSorciere(guerir, poison)) }
+}
+
+/** Gros bouton à deux états : plein quand il est choisi, en contour sinon. */
+@Composable
+private fun Bascule(texte: String, choisi: Boolean, onClick: () -> Unit) {
+    val modifier = Modifier.fillMaxWidth()
+    if (choisi) {
+        Button(onClick = onClick, modifier = modifier) { Text(texte, fontSize = 20.sp, modifier = Modifier.padding(8.dp)) }
+    } else {
+        OutlinedButton(onClick = onClick, modifier = modifier) { Text(texte, fontSize = 20.sp, modifier = Modifier.padding(8.dp)) }
+    }
 }
 
 @Composable
