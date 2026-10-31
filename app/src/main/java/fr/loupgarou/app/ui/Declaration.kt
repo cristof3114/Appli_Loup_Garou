@@ -19,7 +19,7 @@ fun EcranDeclaration(vm: PartieViewModel) {
     var phase by remember(index, vm.erreurDeclaration) { mutableStateOf(0) }
     var choisi by remember(index) { mutableStateOf<Role?>(null) }
 
-    Page {
+    AntiDoubleAppui(index to phase) { Page {
         when (phase) {
             0 -> {
                 vm.erreurDeclaration?.takeIf { index == 0 }?.let {
@@ -43,5 +43,5 @@ fun EcranDeclaration(vm: PartieViewModel) {
                 GrosBouton("Non, je me suis trompé") { phase = 1 }
             }
         }
-    }
+    } }
 }
