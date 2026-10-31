@@ -1,12 +1,16 @@
 package fr.loupgarou.app
 
+import android.app.Application
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import fr.loupgarou.engine.Action
+import fr.loupgarou.engine.Appel
+import fr.loupgarou.engine.Etape
 import fr.loupgarou.engine.Joueur
 import fr.loupgarou.engine.Partie
 import fr.loupgarou.engine.Role
@@ -14,7 +18,13 @@ import fr.loupgarou.engine.Setup
 
 enum class Ecran { PREPARATION, DECLARATION, JEU }
 
-class PartieViewModel : ViewModel() {
+class PartieViewModel(application: Application) : AndroidViewModel(application) {
+    private val voix = Voix(application)
+
+    init {
+        Narration.init(application.getSharedPreferences("narration", Context.MODE_PRIVATE))
+    }
+
     var ecran by mutableStateOf(Ecran.PREPARATION)
         private set
 
@@ -27,6 +37,10 @@ class PartieViewModel : ViewModel() {
         private set
 
     var partie by mutableStateOf<Partie?>(null)
+        private set
+
+    /** Ce que le narrateur vient de dire pour l'étape en cours, affiché à l'écran. */
+    var paroles by mutableStateOf<List<Replique>>(emptyList())
         private set
 
     /** Incrémenté à chaque action pour redessiner l'écran de jeu. */
@@ -83,17 +97,69 @@ class PartieViewModel : ViewModel() {
             return
         }
         val joueurs = noms.mapIndexed { i, nom -> Joueur(i, nom, declarations[i]) }
-        partie = Partie(joueurs, paquet.toList(), centre)
+        val nouvelle = Partie(joueurs, paquet.toList(), centre)
+        partie = nouvelle
+        narrer(null, nouvelle.etape)
         version++
         ecran = Ecran.JEU
     }
 
     fun jouer(action: Action) {
-        partie?.jouer(action)
+        val p = partie ?: return
+        val avant = p.etape
+        p.jouer(action)
+        narrer(avant, p.etape)
         version++
     }
 
+    /** Relance le débat, sauf si le narrateur est déjà en train de parler. */
+    fun relancerDebat() {
+        if (!voix.parle) voix.dire(listOf(Narration.relanceDebat()))
+    }
+
+    fun repeter() {
+        voix.dire(paroles)
+    }
+
+    /**
+     * Fait parler le narrateur en passant de l'étape [avant] à l'étape [apres] : on renvoie au
+     * lit celui qui vient d'agir, on endort le village à la tombée de la nuit, puis on annonce.
+     */
+    private fun narrer(avant: Etape?, apres: Etape) {
+        val dit = mutableListOf<Replique>()
+        if (avant != null && deNuit(avant) && apres !is Etape.VisionVoyante) dit += Narration.rendormir()
+        val appel = appelDe(apres)
+        paroles = when {
+            appel != null -> {
+                if (avant == null || !deNuit(avant)) dit += Narration.endort()
+                listOf(Narration.appel(appel))
+            }
+            apres is Etape.VisionVoyante -> emptyList()
+            else -> Narration.jour(apres)
+        }
+        voix.dire(dit + paroles)
+    }
+
+    private fun deNuit(etape: Etape) = appelDe(etape) != null || etape is Etape.VisionVoyante
+
+    private fun appelDe(etape: Etape): Appel? = when (etape) {
+        is Etape.AppelVoleur -> Appel.VOLEUR
+        is Etape.AppelCupidon -> Appel.CUPIDON
+        is Etape.ReveilAmoureux -> Appel.AMOUREUX
+        is Etape.AppelVoyante -> Appel.VOYANTE
+        is Etape.AppelLoups -> Appel.LOUPS
+        is Etape.AppelSorciere -> Appel.SORCIERE
+        is Etape.AppelFictif -> etape.appel
+        else -> null
+    }
+
+    override fun onCleared() {
+        voix.arreter()
+    }
+
     fun nouvellePartie() {
+        voix.arreter()
+        paroles = emptyList()
         partie = null
         ecran = Ecran.PREPARATION
     }
