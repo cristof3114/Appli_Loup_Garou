@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+<defs>
+<filter id="w" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="2.5"/></filter>
+<pattern id="h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2="4" stroke="#1e1a16" stroke-width="1" opacity="0.75"/></pattern>
+</defs>
+<g filter="url(#w)" stroke="#1e1a16" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="100" cy="100" r="94" fill="#ece0c2" stroke-width="3"/>
+<circle cx="100" cy="100" r="86" fill="none" stroke-width="1.2"/>
+<g stroke-width="2.4" fill="none">
+<path d="M70,150 L70,86 C70,64 84,56 100,56 C116,56 130,64 130,86 L130,150 Z" fill="url(#h)" stroke-width="2.8"/>
+<path d="M100,72 L100,104 M88,82 L112,82" stroke-width="5" stroke="#ece0c2"/>
+<path d="M100,72 L100,104 M88,82 L112,82" stroke-width="2"/>
+<path d="M50,152 Q100,140 150,152" stroke-width="2.6"/>
+</g>
+</g>
+</svg>

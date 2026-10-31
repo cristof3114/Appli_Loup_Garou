@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+<defs>
+<filter id="w" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="2.5"/></filter>
+<pattern id="h" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><line x1="0" y1="0" x2="0" y2="4" stroke="#1e1a16" stroke-width="1" opacity="0.75"/></pattern>
+</defs>
+<g filter="url(#w)" stroke="#1e1a16" stroke-linejoin="round" stroke-linecap="round">
+<circle cx="100" cy="100" r="94" fill="#ece0c2" stroke-width="3"/>
+<circle cx="100" cy="100" r="86" fill="none" stroke-width="1.2"/>
+<g stroke-width="2.4" fill="none">
+<path d="M84,142 C46,118 48,86 68,86 C78,86 84,94 84,100 C84,94 90,86 100,86 C120,86 122,118 84,142 Z" fill="url(#h)" stroke-width="2.8"/>
+<path d="M118,128 C80,104 82,72 102,72 C112,72 118,80 118,86 C118,80 124,72 134,72 C154,72 156,104 118,128 Z" fill="#ece0c2" stroke-width="2.8"/>
+<path d="M84,142 C46,118 48,86 68,86 C78,86 84,94 84,100" stroke-width="2.8"/>
+<path d="M50,58 l2,5 5,2 -5,2 -2,5 -2,-5 -5,-2 5,-2 z M150,140 l2,5 5,2 -5,2 -2,5 -2,-5 -5,-2 5,-2 z" fill="#1e1a16" stroke-width="1"/>
+</g>
+</g>
+</svg>
