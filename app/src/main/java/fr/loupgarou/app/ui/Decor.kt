@@ -121,13 +121,14 @@ private class Place(val x: Float, val y: Float, val echelle: Float)
 
 /**
  * Les tombes se rangent sur trois rangées, de la plus proche à la plus lointaine. Au-delà de
- * 19 morts, les suivantes se glissent entre les premières.
+ * 18 morts, les suivantes se glissent entre les premières.
  */
 private fun placeDe(index: Int): Place {
     val rangees = listOf(
         Triple(640f, 1f, List(6) { 6f + it * 64f }),
-        Triple(568f, 0.8f, List(6) { 30f + it * 56f }),
-        Triple(514f, 0.62f, List(7) { 14f + it * 52f }),
+        // En quinconce : les tombes du fond se placent entre celles de devant.
+        Triple(566f, 0.8f, List(5) { 44f + it * 64f }),
+        Triple(506f, 0.6f, List(7) { 20f + it * 52f }),
     )
     var i = index
     for ((y, echelle, xs) in rangees) {
@@ -196,7 +197,7 @@ private fun Tombe(nom: String, ciel: Ciel, place: Place, index: Int, u: Dp, gauc
             modifier = Modifier.fillMaxSize(),
         )
         // Le prénom gravé sur la pierre, plus petit s'il est long.
-        val taille = min(u * 13, u * 92 / nom.length.coerceAtLeast(1)) * place.echelle
+        val taille = min(u * 13, u * 80 / nom.length.coerceAtLeast(1)) * place.echelle
         with(androidx.compose.ui.platform.LocalDensity.current) {
             Text(
                 nom,
