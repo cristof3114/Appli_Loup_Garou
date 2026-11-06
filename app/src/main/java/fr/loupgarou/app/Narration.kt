@@ -24,8 +24,17 @@ object Narration {
         prefs.getString(CLE, "")!!.split(',').mapNotNull { it.toIntOrNull() }.forEach(dejaDites::addLast)
     }
 
+    /**
+     * Mode « chacun son téléphone » : on vote sur son téléphone, donc pas de répliques qui
+     * demandent de voter à main levée.
+     */
+    var multi = false
+
+    private val aMainLevee = setOf(R.raw.v11_05, R.raw.v13_05)
+
     /** Choisit une variante en évitant les répliques entendues récemment. */
-    private fun une(variantes: List<Replique>): Replique {
+    private fun une(toutes: List<Replique>): Replique {
+        val variantes = if (multi) toutes.filter { it.son !in aMainLevee }.ifEmpty { toutes } else toutes
         val fraiches = variantes.filter { it.son !in dejaDites }.ifEmpty { variantes }
         val choix = fraiches.random()
         dejaDites.remove(choix.son)

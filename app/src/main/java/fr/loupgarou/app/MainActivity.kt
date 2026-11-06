@@ -9,6 +9,8 @@ import androidx.compose.material3.Typography
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.loupgarou.app.ui.EcranDeclaration
 import fr.loupgarou.app.ui.EcranJeu
+import fr.loupgarou.app.ui.EcranJeuMulti
+import fr.loupgarou.app.ui.EcranSalon
 import fr.loupgarou.app.ui.EcranPreparation
 import fr.loupgarou.app.ui.Decor
 import fr.loupgarou.app.ui.Gravure
@@ -34,7 +36,8 @@ class MainActivity : ComponentActivity() {
                     when (vm.ecran) {
                         Ecran.PREPARATION -> EcranPreparation(vm)
                         Ecran.DECLARATION -> EcranDeclaration(vm)
-                        Ecran.JEU -> EcranJeu(vm)
+                        Ecran.SALON -> EcranSalon(vm)
+                        Ecran.JEU -> if (vm.multi != null) EcranJeuMulti(vm) else EcranJeu(vm)
                     }
                 }
             }

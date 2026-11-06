@@ -45,4 +45,15 @@ object Setup {
         val attendu = if (Role.VOLEUR in paquet) 2 else 0
         return if (reste.size == attendu) reste else null
     }
+
+    /**
+     * Distribution par l'appli : mélange le paquet, donne une carte à chacun des [nbJoueurs]
+     * joueurs et laisse le reste (2 cartes avec le Voleur) au centre.
+     */
+    fun tirerRoles(paquet: List<Role>, nbJoueurs: Int, hasard: kotlin.random.Random = kotlin.random.Random): Pair<List<Role>, List<Role>> {
+        require(paquet.size == taillePaquet(nbJoueurs, Role.VOLEUR in paquet)) { "Le paquet ne correspond pas au nombre de joueurs" }
+        // Comme avec les vraies cartes, le Voleur lui-même peut rester au centre (appel fictif).
+        val melange = paquet.shuffled(hasard)
+        return melange.take(nbJoueurs) to melange.drop(nbJoueurs)
+    }
 }
