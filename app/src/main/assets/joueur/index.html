@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#161A26">
+<title>Thiercelieux</title>
+<style>
+  @font-face { font-family: "Gravure"; src: url("/f/im_fell.ttf") format("truetype"); }
+  @font-face { font-family: "Gravure"; font-style: italic; src: url("/f/im_fell_italique.ttf") format("truetype"); }
+  :root {
+    --texte: #E8DCC0; --pale: #B5A785; --voile: rgba(22, 26, 38, .88); --fond: #161A26;
+    --bouton: #E8DCC0; --sur-bouton: #161A26; --scene: url("/f/scene_nuit.webp");
+  }
+  body.jour {
+    --texte: #2B2218; --pale: #5A4A36; --voile: rgba(232, 218, 185, .9); --fond: #E8DAB9;
+    --bouton: #2B2218; --sur-bouton: #E8DAB9; --scene: url("/f/scene_jour.webp");
+  }
+  body.sombre { --texte: #6E6656; --pale: #4E4A40; --voile: rgba(0, 0, 0, .9); --fond: #000; --scene: none; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: "Gravure", Georgia, serif; color: var(--texte); background: var(--fond) var(--scene) center bottom / cover no-repeat fixed;
+    min-height: 100vh; padding: 16px 16px 96px; transition: background-color .6s, color .6s;
+    -webkit-user-select: none; user-select: none;
+  }
+  .panneau { background: var(--voile); border-radius: 16px; padding: 20px 16px; max-width: 560px; margin: 0 auto; text-align: center; }
+  h1 { font-size: 28px; font-weight: normal; margin: 4px 0 12px; line-height: 1.15; }
+  p { font-size: 19px; color: var(--pale); margin: 10px 0; line-height: 1.35; }
+  img.embleme { width: 112px; height: 112px; object-fit: contain; display: block; margin: 0 auto 6px; }
+  body.sombre img.embleme { opacity: .35; }
+  .grille { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 14px 0; }
+  .joueur {
+    font: inherit; font-size: 19px; padding: 12px 6px; border-radius: 22px; border: 1.5px solid var(--texte);
+    background: transparent; color: var(--texte); min-height: 52px;
+  }
+  .joueur.choisi { background: var(--bouton); color: var(--sur-bouton); }
+  .joueur .marque { display: block; font-size: 14px; font-style: italic; opacity: .8; margin-top: 2px; }
+  .joueur:disabled { opacity: 1; }
+  .gros {
+    font: inherit; font-size: 20px; width: 100%; padding: 16px 12px; margin-top: 10px; border-radius: 26px;
+    border: 1.5px solid var(--bouton); background: var(--bouton); color: var(--sur-bouton);
+  }
+  .gros.contour { background: transparent; color: var(--texte); border-color: var(--texte); }
+  .gros:disabled { opacity: .4; }
+  input[type=text] {
+    font: inherit; font-size: 22px; width: 100%; padding: 12px 14px; border-radius: 12px; margin-top: 8px;
+    border: 1.5px solid var(--texte); background: transparent; color: var(--texte); text-align: center;
+  }
+  .erreur { color: #C0543E; }
+  nav {
+    position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 8px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--voile); justify-content: center;
+  }
+  nav button { flex: 1; max-width: 270px; font: inherit; font-size: 18px; padding: 12px; border-radius: 22px; border: 1.5px solid var(--texte); background: transparent; color: var(--texte); }
+  nav[hidden] { display: none; }
+  .fiche {
+    position: fixed; inset: 0; background: var(--fond); overflow-y: auto; padding: 16px 16px 40px; z-index: 5;
+  }
+  .fiche[hidden] { display: none; }
+  .fiche section { border-top: 1px solid var(--pale); margin-top: 16px; padding-top: 12px; text-align: left; }
+  .fiche section h2 { font-size: 23px; font-weight: normal; margin: 0 0 2px; display: flex; align-items: center; gap: 10px; }
+  .fiche section h2 img { width: 52px; height: 52px; object-fit: contain; }
+  .fiche section em { color: var(--pale); }
+  .fiche p { text-align: left; }
+  .fiche .centre p { text-align: center; }
+  .reseau { position: fixed; top: 0; left: 0; right: 0; background: #7A2E22; color: #F4E6CC; text-align: center; padding: 6px; font-size: 16px; z-index: 9; }
+  .reseau[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div class="reseau" id="reseau" hidden>Connexion perdue avec la tablette… on réessaie.</div>
+<main class="panneau" id="ecran"><h1>Thiercelieux</h1><p>Connexion à la tablette…</p></main>
+<nav id="nav" hidden>
+  <button id="btnMoi" type="button">Mon rôle</button>
+  <button id="btnRoles" type="button">Les rôles</button>
+</nav>
+<div class="fiche" id="fiche" hidden></div>
+<script>
+(function () {
+  "use strict";
+  var CLE_JETON = "loupgarou-jeton";
+  var jeton = null;
+  try { jeton = localStorage.getItem(CLE_JETON); } catch (e) {}
+  if (!jeton && location.hash.length > 1) jeton = location.hash.slice(1);
+
+  var vue = null, texteVue = "", selection = [], cleSelection = null, pretA = 0, envoiEnCours = false, ficheOuverte = null;
+  var ecran = document.getElementById("ecran");
+
+  function gardeJeton(j) {
+    jeton = j;
+    try { localStorage.setItem(CLE_JETON, j); } catch (e) {}
+    // Copie dans l'adresse, si la mémoire du navigateur est bloquée (navigation privée).
+    history.replaceState(null, "", "#" + j);
+  }
+
+  function el(tag, attrs, enfants) {
+    var n = document.createElement(tag);
+    for (var k in (attrs || {})) {
+      if (k === "texte") n.textContent = attrs[k];
+      else if (k === "classe") n.className = attrs[k];
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    }
+    (enfants || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+
+  function encode(params) {
+    return Object.keys(params).map(function (k) { return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]); }).join("&");
+  }
+
+  function poster(chemin, params) {
+    return fetch(chemin, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: encode(params), cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); });
+  }
+
+  function nomDe(id) {
+    var o = (vue.choix && vue.choix.options || []).filter(function (x) { return x.id === id; })[0];
+    return o ? o.nom : "";
+  }
+
+  // --- Affichage ---
+
+  function afficher(v) {
+    var nouvelleCle = v.cle !== (vue && vue.cle);
+    vue = v;
+    if (v.cle !== cleSelection) { selection = []; cleSelection = v.cle; }
+    // Un doigt impatient ne doit pas valider l'écran suivant avant qu'il soit lu.
+    if (nouvelleCle) pretA = Date.now() + 800;
+    document.body.className = (v.theme === "jour" ? "jour" : "") + (v.sombre ? " sombre" : "");
+    if (v.inscription) return afficherInscription();
+    ecran.innerHTML = "";
+    if (v.image) ecran.appendChild(el("img", { classe: "embleme", src: "/f/" + v.image + ".webp", alt: "" }));
+    ecran.appendChild(el("h1", { texte: v.titre || "" }));
+    (v.textes || []).forEach(function (t) { ecran.appendChild(el("p", { texte: t })); });
+    if (v.choix) afficherChoix(v.choix);
+    (v.boutons || []).forEach(function (b) { ecran.appendChild(afficherBouton(b)); });
+    document.getElementById("nav").hidden = false;
+    document.getElementById("btnMoi").hidden = !v.moi;
+    if (ficheOuverte) ouvrirFiche(ficheOuverte);
+  }
+
+  function afficherChoix(c) {
+    var grille = el("div", { classe: "grille" });
+    c.options.forEach(function (o) {
+      var choisi = selection.indexOf(o.id) >= 0;
+      var b = el("button", { classe: "joueur" + (choisi ? " choisi" : ""), type: "button" }, [
+        el("span", { texte: o.nom }),
+        o.marque ? el("span", { classe: "marque", texte: o.marque }) : null,
+      ]);
+      if (c.min < 0) b.disabled = true;
+      else b.addEventListener("click", function () {
+        if (Date.now() < pretA) return;
+        var i = selection.indexOf(o.id);
+        if (i >= 0) selection.splice(i, 1);
+        else if (c.max === 1) selection = [o.id];
+        else { selection.push(o.id); while (selection.length > c.max) selection.shift(); }
+        afficher(vue);
+      });
+      grille.appendChild(b);
+    });
+    ecran.appendChild(grille);
+  }
+
+  function afficherBouton(b) {
+    var c = vue.choix;
+    var noms = selection.map(nomDe).join(" et ");
+    var texte = b.texte, actif = true;
+    if (b.selon === "requis") {
+      var assez = c && selection.length >= Math.max(1, c.min) && selection.length <= c.max;
+      if (!assez) { actif = false; if (b.sansChoix) texte = b.sansChoix; }
+    } else if (b.selon === "optionnel" && selection.length === 0 && b.sansChoix) {
+      texte = b.sansChoix;
+    }
+    texte = texte.replace("{nom}", noms);
+    // Un bouton à bascule (potion) n'est plein que lorsqu'il est choisi ; un bouton discret reste en contour.
+    var contour = b.discret || (b.bascule && !b.choisi);
+    var bouton = el("button", { classe: "gros" + (contour ? " contour" : ""), type: "button", texte: texte });
+    bouton.disabled = !actif;
+    bouton.addEventListener("click", function () { agir(b); });
+    return bouton;
+  }
+
+  function afficherInscription(erreur) {
+    document.getElementById("nav").hidden = true;
+    ecran.innerHTML = "";
+    var champ = el("input", { type: "text", maxlength: "20", autocomplete: "off", placeholder: "Ton prénom" });
+    var envoyer = el("button", { classe: "gros", type: "button", texte: "Entrer au village" });
+    function valider() {
+      var nom = champ.value.trim();
+      if (!nom) return;
+      envoyer.disabled = true;
+      poster("/rejoindre", { nom: nom }).then(function (r) {
+        if (r.erreur) { afficherInscription(r.erreur); return; }
+        gardeJeton(r.jeton);
+        texteVue = "";
+        rafraichir();
+      }).catch(function () { afficherInscription("La tablette ne répond pas. Es-tu sur le même Wi-Fi ?"); });
+    }
+    envoyer.addEventListener("click", valider);
+    champ.addEventListener("keydown", function (e) { if (e.key === "Enter") valider(); });
+    ecran.appendChild(el("img", { classe: "embleme", src: "/f/embleme_village.webp", alt: "" }));
+    ecran.appendChild(el("h1", { texte: "Bienvenue à Thiercelieux" }));
+    ecran.appendChild(el("p", { texte: "Écris ton prénom pour rejoindre la partie." }));
+    ecran.appendChild(champ);
+    if (erreur) ecran.appendChild(el("p", { classe: "erreur", texte: erreur }));
+    ecran.appendChild(envoyer);
+  }
+
+  // --- Fiches « Mon rôle » et « Les rôles » ---
+
+  function ouvrirFiche(quoi) {
+    ficheOuverte = quoi;
+    var f = document.getElementById("fiche");
+    f.innerHTML = "";
+    f.hidden = false;
+    var fermer = el("button", { classe: "gros", type: "button", texte: "Fermer", onclick: fermerFiche });
+    if (quoi === "moi" && vue.moi) {
+      var m = vue.moi;
+      var centre = el("div", { classe: "centre" }, [
+        el("img", { classe: "embleme", src: "/f/" + m.image + ".webp", alt: "" }),
+        el("h1", { texte: m.nom + ", tu es " + m.role }),
+        el("p", { texte: m.camp + (m.vivant ? "" : " · tu es mort") }),
+      ]);
+      f.appendChild(centre);
+      var s = el("section");
+      m.fiche.forEach(function (t) { s.appendChild(el("p", { texte: t })); });
+      if (m.amoureux) s.appendChild(el("p", { texte: "❤ " + m.amoureux }));
+      if (m.capitaine) s.appendChild(el("p", { texte: "★ " + m.capitaine }));
+      f.appendChild(s);
+      if (m.composition) f.appendChild(el("section", {}, [el("p", { texte: "En jeu : " + m.composition })]));
+      f.appendChild(el("p", { classe: "centre", texte: "Cache bien ton écran pendant que tu lis." }));
+    } else {
+      f.appendChild(el("h1", { texte: "Les rôles en jeu", style: "text-align:center" }));
+      (vue.roles || []).forEach(function (r) {
+        var s = el("section", {}, [
+          el("h2", {}, [el("img", { src: "/f/" + r.image + ".webp", alt: "" }), el("span", { texte: r.role + (r.nombre > 1 ? " × " + r.nombre : "") })]),
+          el("em", { texte: r.camp }),
+        ]);
+        r.fiche.forEach(function (t) { s.appendChild(el("p", { texte: t })); });
+        f.appendChild(s);
+      });
+    }
+    f.appendChild(fermer);
+  }
+
+  function fermerFiche() {
+    ficheOuverte = null;
+    document.getElementById("fiche").hidden = true;
+  }
+
+  document.getElementById("btnMoi").addEventListener("click", function () { ouvrirFiche("moi"); });
+  document.getElementById("btnRoles").addEventListener("click", function () { ouvrirFiche("roles"); });
+
+  // --- Échanges avec la tablette ---
+
+  function agir(b) {
+    if (Date.now() < pretA || envoiEnCours) return;
+    envoiEnCours = true;
+    poster("/action", { j: jeton || "", cle: vue.cle, a: b.action, c: selection.join(",") })
+      .then(recu)
+      .catch(function () {})
+      .then(function () { envoiEnCours = false; });
+  }
+
+  function recu(v) {
+    document.getElementById("reseau").hidden = true;
+    var t = JSON.stringify(v);
+    if (t === texteVue) return;
+    texteVue = t;
+    afficher(v);
+  }
+
+  var echecs = 0;
+  function rafraichir() {
+    // Pendant que le joueur tape son prénom, on ne redessine pas l'écran.
+    if (vue && vue.inscription && document.activeElement && document.activeElement.tagName === "INPUT") return Promise.resolve();
+    return fetch("/etat?j=" + encodeURIComponent(jeton || ""), { cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (v) { echecs = 0; recu(v); })
+      .catch(function () { if (++echecs >= 3) document.getElementById("reseau").hidden = false; });
+  }
+
+  function boucle() {
+    rafraichir().then(function () { setTimeout(boucle, document.hidden ? 4000 : 1000); });
+  }
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) rafraichir(); });
+  boucle();
+})();
+</script>
+</body>
+</html>

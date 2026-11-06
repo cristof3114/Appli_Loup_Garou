@@ -18,7 +18,7 @@ import fr.loupgarou.engine.Partie
 import fr.loupgarou.engine.Role
 import fr.loupgarou.engine.Setup
 
-enum class Ecran { PREPARATION, DECLARATION, JEU }
+enum class Ecran { PREPARATION, DECLARATION, SALON, JEU }
 
 class PartieViewModel(application: Application) : AndroidViewModel(application) {
     private val voix = Voix(application)
@@ -50,6 +50,14 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
      * voix le renvoie au lit et qu'un silence passe avant l'appel suivant.
      */
     var enTransition by mutableStateOf(false)
+        private set
+
+    /** Mode « chacun son téléphone » : le salon et son serveur Wi-Fi, ou null pour une seule tablette. */
+    var multi by mutableStateOf<MultiHote?>(null)
+        private set
+
+    /** Incrémenté quand un téléphone se connecte ou agit, pour redessiner la tablette. */
+    var versionSalon by mutableIntStateOf(0)
         private set
     private val minuterie = Handler(Looper.getMainLooper())
     private var jetonTransition = 0
@@ -118,7 +126,12 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
     fun jouer(action: Action) {
         val p = partie ?: return
         val avant = p.etape
-        p.jouer(action)
+        // Un téléphone a pu envoyer une action périmée : le moteur la refuse, on l'ignore.
+        if (multi != null) {
+            if (runCatching { p.jouer(action) }.isFailure) return
+        } else {
+            p.jouer(action)
+        }
         narrer(avant, p.etape)
         version++
     }
@@ -152,7 +165,9 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
         paroles = when {
             appel != null -> {
                 if (avant == null || !deNuit(avant)) dit += Narration.endort()
-                listOf(Narration.appel(appel))
+                // Les répliques enregistrées des Amoureux parlent de faire passer la tablette :
+                // avec les téléphones, chacun lit son secret en silence.
+                if (multi != null && appel == Appel.AMOUREUX) emptyList() else listOf(Narration.appel(appel))
             }
             apres is Etape.VisionVoyante -> emptyList()
             else -> Narration.jour(apres)
@@ -164,12 +179,76 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
         val jeton = ++jetonTransition
         val finir = {
             // Seule la transition en cours peut se terminer, et une seule fois.
-            if (jeton == jetonTransition && enTransition) enTransition = false
+            if (jeton == jetonTransition && enTransition) regler(false)
         }
-        enTransition = transition.isNotEmpty()
+        regler(transition.isNotEmpty())
         voix.dire(transition, PAUSE_TRANSITION_MS, ensuite) { finir() }
         // Filet de sécurité si le son ne se termine jamais : l'écran ne reste pas bloqué.
         if (enTransition) minuterie.postDelayed({ finir() }, SECURITE_TRANSITION_MS)
+    }
+
+    /** La transition vaut aussi pour les téléphones : personne n'agit pendant que la voix endort. */
+    private fun regler(transition: Boolean) {
+        enTransition = transition
+        multi?.salon?.enTransition = transition
+        versionSalon++
+    }
+
+    // --- Chacun son téléphone ---
+
+    fun ouvrirSalon() {
+        val hote = multi ?: MultiHote(getApplication<Application>(), ::jouer) { synchroniserSalon() }.also { multi = it }
+        hote.demarrer()
+        Narration.multi = true
+        synchroniserSalon()
+        ecran = Ecran.SALON
+    }
+
+    /** Retour au mode à une seule tablette. */
+    fun fermerSalon() {
+        multi?.arreter()
+        multi = null
+        Narration.multi = false
+        noms.clear()
+        nouvellePartie()
+    }
+
+    fun actualiserAdresse() {
+        multi?.actualiserAdresse()
+        versionSalon++
+    }
+
+    fun retirerDuSalon(id: Int) {
+        multi?.salon?.retirer(id)
+        synchroniserSalon()
+    }
+
+    /** Les prénoms de la tablette suivent ceux des téléphones connectés. */
+    private fun synchroniserSalon() {
+        val salon = multi?.salon ?: return
+        val actuels = salon.places.map { it.nom }
+        if (noms.toList() != actuels) {
+            noms.clear()
+            noms.addAll(actuels)
+        }
+        versionSalon++
+    }
+
+    fun distribuerAuxTelephones() {
+        val salon = multi?.salon ?: return
+        if (!peutCommencer()) return
+        salon.distribuer(paquet.toList())
+        versionSalon++
+    }
+
+    fun commencerNuitMulti() {
+        val salon = multi?.salon ?: return
+        if (!salon.toutLeMondeEstPret()) return
+        val nouvelle = salon.commencer()
+        partie = nouvelle
+        narrer(null, nouvelle.etape)
+        version++
+        ecran = Ecran.JEU
     }
 
     private fun deNuit(etape: Etape) = appelDe(etape) != null || etape is Etape.VisionVoyante
@@ -186,17 +265,26 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     override fun onCleared() {
+        multi?.arreter()
         minuterie.removeCallbacksAndMessages(null)
         voix.arreter()
     }
 
+    /** En mode téléphones, on rejoue avec les mêmes joueurs, déjà connectés. */
     fun nouvellePartie() {
         jetonTransition++
-        enTransition = false
+        regler(false)
         voix.arreter()
         paroles = emptyList()
         partie = null
-        ecran = Ecran.PREPARATION
+        val hote = multi
+        if (hote != null) {
+            hote.salon.rejouer()
+            synchroniserSalon()
+            ecran = Ecran.SALON
+        } else {
+            ecran = Ecran.PREPARATION
+        }
     }
 
     private companion object {

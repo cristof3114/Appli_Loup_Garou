@@ -348,7 +348,7 @@ private fun Vote(vm: PartieViewModel, partie: Partie, etape: Etape.Vote, jouer: 
 
 /** Les paroles du narrateur pour l'étape en cours, avec de quoi les réentendre. */
 @Composable
-private fun Paroles(vm: PartieViewModel) {
+fun Paroles(vm: PartieViewModel) {
     vm.paroles.forEach { Recit(it.texte) }
     if (vm.paroles.isNotEmpty()) TextButton(onClick = vm::repeter) { Text("Répéter") }
 }

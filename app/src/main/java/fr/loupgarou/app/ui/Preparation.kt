@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -40,7 +41,15 @@ fun EcranPreparation(vm: PartieViewModel) {
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { Text("Joueurs (${vm.noms.size})", fontSize = 24.sp, modifier = Modifier.padding(top = 24.dp)) }
+        item {
+            GrosBouton("Chacun son téléphone (Android ou iPhone)") { vm.ouvrirSalon() }
+            Text(
+                "Ou bien jouez tous sur cette tablette, avec vos vraies cartes :",
+                fontSize = 18.sp,
+                modifier = Modifier.padding(top = 16.dp),
+            )
+        }
+        item { Text("Joueurs (${vm.noms.size})", fontSize = 24.sp, modifier = Modifier.padding(top = 8.dp)) }
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 OutlinedTextField(
@@ -63,33 +72,38 @@ fun EcranPreparation(vm: PartieViewModel) {
             }
         }
 
-        item {
-            Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                val avecVoleur = Role.VOLEUR in vm.paquet
-                Text(
-                    "Paquet : ${vm.paquet.size} / ${Setup.taillePaquet(vm.noms.size, avecVoleur)} cartes",
-                    fontSize = 24.sp,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = vm::proposerComposition, enabled = vm.noms.size >= 4) { Text("Proposer") }
-            }
-        }
-        items(Role.entries) { role ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(role.nom, fontSize = 18.sp, modifier = Modifier.weight(1f))
-                TextButton(onClick = { vm.retirerCarte(role) }) { Text("−", fontSize = 22.sp) }
-                Text("${vm.paquet.count { it == role }}", fontSize = 18.sp)
-                TextButton(onClick = { vm.ajouterCarte(role) }) { Text("+", fontSize = 22.sp) }
-            }
-        }
-        items(vm.avertissements()) { a ->
-            Text(a, color = MaterialTheme.colorScheme.error)
-        }
+        editeurComposition(vm)
         item {
             GrosBouton("Distribuer les cartes, puis déclarer les rôles", actif = vm.peutCommencer()) {
                 vm.commencerDeclarations()
             }
         }
         item { Text("") }
+    }
+}
+
+/** Le choix des cartes du paquet, commun aux deux modes de jeu. */
+fun LazyListScope.editeurComposition(vm: PartieViewModel) {
+    item {
+        Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            val avecVoleur = Role.VOLEUR in vm.paquet
+            Text(
+                "Paquet : ${vm.paquet.size} / ${Setup.taillePaquet(vm.noms.size, avecVoleur)} cartes",
+                fontSize = 24.sp,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = vm::proposerComposition, enabled = vm.noms.size >= 4) { Text("Proposer") }
+        }
+    }
+    items(Role.entries) { role ->
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(role.nom, fontSize = 18.sp, modifier = Modifier.weight(1f))
+            TextButton(onClick = { vm.retirerCarte(role) }) { Text("−", fontSize = 22.sp) }
+            Text("${vm.paquet.count { it == role }}", fontSize = 18.sp)
+            TextButton(onClick = { vm.ajouterCarte(role) }) { Text("+", fontSize = 22.sp) }
+        }
+    }
+    items(vm.avertissements()) { a ->
+        Text(a, color = MaterialTheme.colorScheme.error)
     }
 }
