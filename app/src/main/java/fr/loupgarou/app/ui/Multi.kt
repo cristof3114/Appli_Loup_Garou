@@ -6,7 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -59,32 +61,8 @@ fun EcranSalon(vm: PartieViewModel) {
         }
         return
     }
-    LazyColumn(
-        Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(LocalEncre.current.voile)
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        item { Text("Chacun son téléphone", fontSize = 28.sp, modifier = Modifier.padding(top = 24.dp)) }
-        item {
-            val adresse = hote.adresse
-            if (adresse != null) {
-                CodeQr(adresse)
-                Recit("Scannez ce code avec l'appareil photo du téléphone, ou tapez cette adresse dans le navigateur :")
-                Text(adresse, fontSize = 24.sp, textAlign = TextAlign.Center)
-                Recit("Tous les téléphones doivent être sur le même Wi-Fi que la tablette.")
-            } else {
-                Recit(
-                    "La tablette n'est connectée à aucun Wi-Fi. Connectez-la au Wi-Fi de la maison, " +
-                        "ou activez son point d'accès pour que les téléphones s'y connectent.",
-                )
-            }
-            TextButton(onClick = vm::actualiserAdresse, modifier = Modifier.contourFocus()) { Text("Actualiser l'adresse") }
-        }
+    val voile = LocalEncre.current.voile
+    val liste: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
         item { Text("Joueurs connectés (${salon.places.size})", fontSize = 24.sp, modifier = Modifier.padding(top = 8.dp)) }
         items(salon.places.toList(), key = { it.id }) { place ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -102,10 +80,60 @@ fun EcranSalon(vm: PartieViewModel) {
         }
         item { Text("") }
     }
+    val cadre = Modifier
+        .clip(RoundedCornerShape(16.dp))
+        .background(voile)
+        .padding(horizontal = 16.dp)
+    if (BuildConfig.TELE) {
+        // Sur la télé, le QR code reste fixe et toujours visible ; seule la liste défile.
+        Row(Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            androidx.compose.foundation.layout.Column(
+                cadre.width(280.dp).fillMaxHeight().padding(vertical = 12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) { BlocQr(vm, taille = 200) }
+            LazyColumn(
+                cadre.weight(1f).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                content = liste,
+            )
+        }
+        return
+    }
+    LazyColumn(
+        Modifier.fillMaxSize().padding(16.dp).then(cadre),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        item { Text("Chacun son téléphone", fontSize = 28.sp, modifier = Modifier.padding(top = 24.dp)) }
+        item { BlocQr(vm, taille = 240) }
+        liste()
+    }
+}
+
+/** Le QR code et l'adresse que les joueurs ouvrent sur leur téléphone. */
+@Composable
+private fun BlocQr(vm: PartieViewModel, taille: Int) {
+    val hote = vm.multi ?: return
+    val appareil = if (BuildConfig.TELE) "la télé" else "la tablette"
+    val adresse = hote.adresse
+    if (adresse != null) {
+        CodeQr(adresse, taille)
+        Recit("Scannez ce code avec l'appareil photo, ou tapez dans le navigateur :")
+        Text(adresse, fontSize = 22.sp, textAlign = TextAlign.Center)
+        Recit("Même Wi-Fi que $appareil pour tout le monde.")
+    } else {
+        Recit(
+            "${appareil.replaceFirstChar { it.uppercase() }} n'est connectée à aucun réseau. Connectez-la au Wi-Fi de la maison" +
+                if (BuildConfig.TELE) "." else ", ou activez son point d'accès pour que les téléphones s'y connectent.",
+        )
+    }
+    TextButton(onClick = vm::actualiserAdresse, modifier = Modifier.contourFocus()) { Text("Actualiser l'adresse") }
 }
 
 @Composable
-private fun CodeQr(texte: String) {
+private fun CodeQr(texte: String, taille: Int) {
     val image = remember(texte) {
         val m = QRCodeWriter().encode(texte, BarcodeFormat.QR_CODE, 0, 0, mapOf(EncodeHintType.MARGIN to 1))
         val bmp = Bitmap.createBitmap(m.width, m.height, Bitmap.Config.ARGB_8888)
@@ -118,7 +146,7 @@ private fun CodeQr(texte: String) {
         bitmap = image,
         contentDescription = "Code QR de la partie",
         filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
-        modifier = Modifier.size(240.dp).clip(RoundedCornerShape(8.dp)),
+        modifier = Modifier.size(taille.dp).clip(RoundedCornerShape(8.dp)),
     )
 }
 

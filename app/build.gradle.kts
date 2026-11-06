@@ -12,8 +12,8 @@ android {
         applicationId = "fr.loupgarou.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4"
+        versionCode = 5
+        versionName = "0.4.1"
     }
 
     // Deux applis depuis le même code : la tablette (ou le téléphone) au centre de la table,
