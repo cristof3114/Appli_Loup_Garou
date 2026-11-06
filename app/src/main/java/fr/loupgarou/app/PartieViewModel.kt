@@ -177,7 +177,6 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
     private fun appelDe(etape: Etape): Appel? = when (etape) {
         is Etape.AppelVoleur -> Appel.VOLEUR
         is Etape.AppelCupidon -> Appel.CUPIDON
-        is Etape.ReveilAmoureux -> Appel.AMOUREUX
         is Etape.AppelVoyante -> Appel.VOYANTE
         is Etape.AppelLoups -> Appel.LOUPS
         is Etape.AppelSorciere -> Appel.SORCIERE

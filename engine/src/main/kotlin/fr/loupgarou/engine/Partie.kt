@@ -2,14 +2,13 @@ package fr.loupgarou.engine
 
 /** Les appels de nuit, dans l'ordre de la règle. */
 enum class Appel(val premiereNuitSeulement: Boolean = false) {
-    VOLEUR(true), CUPIDON(true), AMOUREUX(true), VOYANTE, LOUPS, SORCIERE
+    VOLEUR(true), CUPIDON(true), VOYANTE, LOUPS, SORCIERE
 }
 
 /** Ce que l'appli doit montrer ou demander maintenant. Chaque étape attend une [Action]. */
 sealed interface Etape {
     data class AppelVoleur(val voleur: Int, val cartes: List<Role>, val doitPrendreLoup: Boolean) : Etape
     data class AppelCupidon(val cupidon: Int) : Etape
-    data class ReveilAmoureux(val a: Int, val b: Int) : Etape
     data class AppelVoyante(val voyante: Int) : Etape
     data class VisionVoyante(val cible: Int, val role: Role) : Etape
     data class AppelLoups(val loups: List<Int>) : Etape
@@ -22,6 +21,12 @@ sealed interface Etape {
 
     /** Rôle du paquet que personne ne tient (carte au centre) : on l'appelle quand même pour ne rien trahir. */
     data class AppelFictif(val appel: Appel) : Etape
+    /**
+     * Au premier matin, si Cupidon est dans le paquet : la tablette passe de main en main et
+     * chaque joueur lit en secret s'il est amoureux, et de qui. Tout le monde y passe, pour
+     * que personne ne se trahisse.
+     */
+    data class DecouverteAmoureux(val joueurs: List<Int>) : Etape
     data class Annonce(val morts: List<Mort>, val moment: Moment) : Etape
     data class TirDuChasseur(val chasseur: Int) : Etape
     data class SuccessionCapitaine(val capitaine: Int) : Etape
@@ -70,6 +75,7 @@ class Partie(
     private var victimeLoups: Int? = null
     private var empoisonne: Int? = null
     private var guerie = false
+    private var amoureuxPrevenus = false
     private val reactions = ArrayDeque<Etape>()
     private var suite: () -> Unit = {}
 
@@ -130,7 +136,11 @@ class Partie(
                 }
                 appelSuivant()
             }
-            is Etape.ReveilAmoureux, is Etape.VisionVoyante, is Etape.AppelFictif -> {
+            is Etape.DecouverteAmoureux -> {
+                require(action == Action.Ok)
+                apresLeReveil()
+            }
+            is Etape.VisionVoyante, is Etape.AppelFictif -> {
                 require(action == Action.Ok)
                 appelSuivant()
             }
@@ -206,7 +216,7 @@ class Partie(
     private fun etapePour(appel: Appel): Etape? {
         val roleAppele = when (appel) {
             Appel.VOLEUR -> Role.VOLEUR
-            Appel.CUPIDON, Appel.AMOUREUX -> Role.CUPIDON
+            Appel.CUPIDON -> Role.CUPIDON
             Appel.VOYANTE -> Role.VOYANTE
             Appel.LOUPS -> Role.LOUP_GAROU
             Appel.SORCIERE -> Role.SORCIERE
@@ -216,10 +226,6 @@ class Partie(
         val vivants = titulaires.filter { it.vivant }
         // Rôle d'un mort : sa carte a été révélée, inutile de l'appeler.
         if (titulaires.isNotEmpty() && vivants.isEmpty()) return null
-        if (appel == Appel.AMOUREUX) {
-            val a = joueurs.firstOrNull { it.amoureuxDe != null } ?: return Etape.AppelFictif(appel)
-            return Etape.ReveilAmoureux(a.id, a.amoureuxDe!!)
-        }
         // Carte restée au centre : appel fictif.
         if (vivants.isEmpty()) return Etape.AppelFictif(appel)
         val titulaire = vivants.first().id
@@ -238,7 +244,6 @@ class Partie(
                 peutGuerir = potionGuerison && victimeLoups != null,
                 peutEmpoisonner = potionPoison,
             )
-            Appel.AMOUREUX -> error("traité plus haut")
         }
     }
 
@@ -254,6 +259,11 @@ class Partie(
     // --- Jour ---
 
     private fun apresLeReveil() {
+        if (!amoureuxPrevenus && Role.CUPIDON in paquet) {
+            amoureuxPrevenus = true
+            etape = Etape.DecouverteAmoureux(vivants().map { it.id })
+            return
+        }
         etape = if (capitaine == null) Etape.ElectionCapitaine else Etape.Vote(vivants().map { it.id }, revote = false)
     }
 

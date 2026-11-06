@@ -25,7 +25,7 @@ class PartieTest {
             val e = etape
             if (e is T) return e
             when (e) {
-                is Etape.AppelFictif, is Etape.ReveilAmoureux, is Etape.VisionVoyante, is Etape.Annonce -> ok()
+                is Etape.AppelFictif, is Etape.DecouverteAmoureux, is Etape.VisionVoyante, is Etape.Annonce -> ok()
                 else -> error("Bloqué sur $e en attendant ${T::class.simpleName}")
             }
         }
@@ -37,8 +37,6 @@ class PartieTest {
         val p = partie(Role.CUPIDON, Role.VOYANTE, Role.LOUP_GAROU, Role.SORCIERE, Role.VILLAGEOIS)
         assertIs<Etape.AppelCupidon>(p.etape)
         p.jouer(Action.ChoixCupidon(1, 4))
-        assertEquals(Etape.ReveilAmoureux(1, 4), p.etape)
-        p.ok()
         assertIs<Etape.AppelVoyante>(p.etape)
         p.jouer(Action.Designation(2))
         assertEquals(Etape.VisionVoyante(2, Role.LOUP_GAROU), p.etape)
@@ -102,6 +100,31 @@ class PartieTest {
         p.jouer(Action.ChoixLoups(3))
         val morts = (p.etape as Etape.Annonce).morts
         assertEquals(listOf(3 to CauseDeMort.LOUPS, 4 to CauseDeMort.CHAGRIN), morts.map { it.joueurId to it.cause })
+    }
+
+    @Test
+    fun `les amoureux decouvrent leur lien au premier matin, chacun a son tour`() {
+        val p = partie(Role.CUPIDON, Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        p.jouer(Action.ChoixCupidon(3, 4))
+        // Plus d'appel de nuit des amoureux : personne ne saurait qu'il doit ouvrir les yeux.
+        assertIs<Etape.AppelLoups>(p.etape)
+        p.jouer(Action.ChoixLoups(5))
+        p.ok()
+        assertEquals(Etape.DecouverteAmoureux(listOf(0, 1, 2, 3, 4)), p.etape)
+        p.ok()
+        assertEquals(Etape.ElectionCapitaine, p.etape)
+        // Une seule fois dans la partie.
+        p.jouer(Action.Designation(3))
+        p.jouer(Action.Elimination(1)); p.ok()
+        p.jusqua<Etape.AppelLoups>().also { p.jouer(Action.ChoixLoups(0)) }
+        p.ok()
+        assertIs<Etape.Vote>(p.etape)
+
+        // Sans Cupidon dans le paquet, pas de tour de tablette.
+        val q = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        q.jusqua<Etape.AppelLoups>().also { q.jouer(Action.ChoixLoups(4)) }
+        q.ok()
+        assertEquals(Etape.ElectionCapitaine, q.etape)
     }
 
     @Test
@@ -218,6 +241,8 @@ class PartieTest {
         a.jusqua<Etape.AppelLoups>()
         a.jouer(Action.ChoixLoups(0)); a.ok()
         assertNull(a.vainqueur())
+        assertEquals(Etape.DecouverteAmoureux(listOf(1, 2, 3)), a.etape)
+        a.ok()
         a.jouer(Action.Designation(1))
         a.jouer(Action.Elimination(2)); a.ok()
         assertEquals(Etape.Fin(Camp.AMOUREUX), a.etape)
@@ -352,7 +377,7 @@ class PartieTest {
                         }
                         p.ok()
                     }
-                    is Etape.ReveilAmoureux, is Etape.VisionVoyante, is Etape.Annonce -> p.ok()
+                    is Etape.DecouverteAmoureux, is Etape.VisionVoyante, is Etape.Annonce -> p.ok()
                     is Etape.TirDuChasseur, is Etape.SuccessionCapitaine, Etape.ElectionCapitaine, is Etape.DepartageCapitaine ->
                         p.jouer(Action.Designation(if (e is Etape.DepartageCapitaine) e.exAequo.random(r) else vivants.random(r)))
                     is Etape.Vote -> p.jouer(Action.Elimination(e.candidats.random(r)))

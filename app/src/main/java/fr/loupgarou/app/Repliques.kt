@@ -34,14 +34,6 @@ object Repliques {
         Replique("Cupidon ouvre les yeux. Choisis deux amoureux. Toi-même, si tu es d'humeur romantique.", R.raw.v03_05),
         Replique("Cupidon, à toi. Unis deux destins, ils ne pourront plus se défaire.", R.raw.v03_06),
     )
-    val amoureux = listOf(
-        Replique("Les Amoureux se réveillent et se découvrent. Profitez-en, ça ne durera peut-être pas.", R.raw.v04_01),
-        Replique("Amoureux, ouvrez les yeux et regardez-vous. Désormais, si l'un tombe, l'autre suit.", R.raw.v04_02),
-        Replique("Les Amoureux s'éveillent. Un regard suffit. C'est beau. C'est fragile.", R.raw.v04_03),
-        Replique("Amoureux, réveillez-vous et contemplez votre moitié. Votre moitié de cercueil, peut-être.", R.raw.v04_04),
-        Replique("Les Amoureux ouvrent les yeux. L'amour rend aveugle. Ici, il rend surtout mortel.", R.raw.v04_05),
-        Replique("Amoureux, découvrez-vous. Et rendormez-vous, main dans la main.", R.raw.v04_06),
-    )
     val voyante = listOf(
         Replique("La Voyante se réveille. Choisis l'âme que tu veux sonder.", R.raw.v05_01),
         Replique("Voyante, ouvre les yeux. Ta boule de cristal a faim de vérité.", R.raw.v05_02),

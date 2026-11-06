@@ -86,12 +86,12 @@ fun ambianceDe(etape: Etape?, enTransition: Boolean): Ambiance {
     val ambiance = when (etape) {
         is Etape.AppelVoleur -> nuit.copy(embleme = R.drawable.embleme_voleur)
         is Etape.AppelCupidon -> nuit.copy(embleme = R.drawable.embleme_cupidon)
-        is Etape.ReveilAmoureux -> nuit.copy(embleme = R.drawable.embleme_amoureux)
         is Etape.AppelVoyante, is Etape.VisionVoyante -> nuit.copy(embleme = R.drawable.embleme_voyante)
         is Etape.AppelLoups -> nuit.copy(embleme = R.drawable.embleme_loups)
         is Etape.AppelSorciere -> nuit.copy(embleme = R.drawable.embleme_sorciere)
         is Etape.AppelFictif -> nuit.copy(embleme = emblemeDe(etape.appel))
         is Etape.Annonce -> jour
+        is Etape.DecouverteAmoureux -> jour.copy(embleme = R.drawable.embleme_cupidon)
         is Etape.TirDuChasseur -> jour.copy(embleme = R.drawable.embleme_chasseur)
         is Etape.SuccessionCapitaine, Etape.ElectionCapitaine, is Etape.DepartageCapitaine ->
             jour.copy(embleme = R.drawable.embleme_capitaine)
@@ -110,7 +110,6 @@ fun ambianceDe(etape: Etape?, enTransition: Boolean): Ambiance {
 private fun emblemeDe(appel: Appel) = when (appel) {
     Appel.VOLEUR -> R.drawable.embleme_voleur
     Appel.CUPIDON -> R.drawable.embleme_cupidon
-    Appel.AMOUREUX -> R.drawable.embleme_amoureux
     Appel.VOYANTE -> R.drawable.embleme_voyante
     Appel.LOUPS -> R.drawable.embleme_loups
     Appel.SORCIERE -> R.drawable.embleme_sorciere
