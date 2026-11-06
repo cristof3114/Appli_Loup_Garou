@@ -9,7 +9,12 @@ enum class Appel(val premiereNuitSeulement: Boolean = false) {
 sealed interface Etape {
     data class AppelVoleur(val voleur: Int, val cartes: List<Role>, val doitPrendreLoup: Boolean) : Etape
     data class AppelCupidon(val cupidon: Int) : Etape
-    data class ReveilAmoureux(val a: Int, val b: Int) : Etape
+    /**
+     * Juste après Cupidon : la tablette passe de main en main, yeux fermés, et chaque joueur
+     * lit en secret s'il est amoureux, et de qui. Tout le monde y passe, même quand la carte
+     * Cupidon est au centre, pour que personne ne se trahisse.
+     */
+    data class DecouverteAmoureux(val joueurs: List<Int>) : Etape
     data class AppelVoyante(val voyante: Int) : Etape
     data class VisionVoyante(val cible: Int, val role: Role) : Etape
     data class AppelLoups(val loups: List<Int>) : Etape
@@ -130,7 +135,7 @@ class Partie(
                 }
                 appelSuivant()
             }
-            is Etape.ReveilAmoureux, is Etape.VisionVoyante, is Etape.AppelFictif -> {
+            is Etape.DecouverteAmoureux, is Etape.VisionVoyante, is Etape.AppelFictif -> {
                 require(action == Action.Ok)
                 appelSuivant()
             }
@@ -216,10 +221,7 @@ class Partie(
         val vivants = titulaires.filter { it.vivant }
         // Rôle d'un mort : sa carte a été révélée, inutile de l'appeler.
         if (titulaires.isNotEmpty() && vivants.isEmpty()) return null
-        if (appel == Appel.AMOUREUX) {
-            val a = joueurs.firstOrNull { it.amoureuxDe != null } ?: return Etape.AppelFictif(appel)
-            return Etape.ReveilAmoureux(a.id, a.amoureuxDe!!)
-        }
+        if (appel == Appel.AMOUREUX) return Etape.DecouverteAmoureux(vivants().map { it.id })
         // Carte restée au centre : appel fictif.
         if (vivants.isEmpty()) return Etape.AppelFictif(appel)
         val titulaire = vivants.first().id

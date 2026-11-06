@@ -44,11 +44,7 @@ fun EcranJeu(vm: PartieViewModel) {
         is Etape.AppelFictif -> AppelDeNuit(dit, vm.version, fictif = true, onFictifTermine = { vm.jouerSi(etape, Action.Ok) }) {}
         is Etape.AppelVoleur -> AppelDeNuit(dit, vm.version) { Voleur(etape, jouer) }
         is Etape.AppelCupidon -> AppelDeNuit(dit, vm.version) { Cupidon(partie, jouer) }
-        is Etape.ReveilAmoureux -> AppelDeNuit(dit, vm.version) {
-            Titre("${partie.joueur(etape.a).nom} et ${partie.joueur(etape.b).nom} sont amoureux")
-            Recit("Si l'un meurt, l'autre meurt de chagrin.")
-            GrosBouton("Fermer les yeux") { jouer(Action.Ok) }
-        }
+        is Etape.DecouverteAmoureux -> DecouverteAmoureux(partie, etape, dit, vm.version, jouer)
         is Etape.AppelVoyante -> AppelDeNuit(dit, vm.version) {
             Titre("Qui veux-tu sonder ?")
             DesignerJoueur(
@@ -118,7 +114,7 @@ fun EcranJeu(vm: PartieViewModel) {
 }
 
 private fun appelDeNuit(etape: Etape) = when (etape) {
-    is Etape.AppelVoleur, is Etape.AppelCupidon, is Etape.ReveilAmoureux, is Etape.AppelVoyante,
+    is Etape.AppelVoleur, is Etape.AppelCupidon, is Etape.DecouverteAmoureux, is Etape.AppelVoyante,
     is Etape.VisionVoyante, is Etape.AppelLoups, is Etape.AppelSorciere, is Etape.AppelFictif -> true
     else -> false
 }
@@ -164,6 +160,64 @@ private fun Voleur(etape: Etape.AppelVoleur, jouer: (Action) -> Unit) {
         GrosBouton("Prendre ${carte.nom}") { jouer(Action.ChoixVoleur(carte)) }
     }
     Recit("Si tu changes, échange aussi ta carte physique avec celle du centre.")
+}
+
+/**
+ * Juste après Cupidon, la tablette fait le tour de la table, yeux fermés : celui qui la reçoit
+ * ouvre les yeux, touche son prénom, lit en secret s'il est amoureux (et de qui), referme les
+ * yeux et la passe à son voisin. Tout le monde y passe, avec le même geste, pour que personne
+ * ne se trahisse.
+ */
+@Composable
+private fun DecouverteAmoureux(partie: Partie, etape: Etape.DecouverteAmoureux, dit: String, version: Int, jouer: (Action) -> Unit) {
+    var vus by remember(version) { mutableStateOf(setOf<Int>()) }
+    var lecteur by remember(version) { mutableStateOf<Int?>(null) }
+    val enCours = lecteur
+    if (enCours != null) {
+        // Garde contre le double appui : le secret ne se referme pas avant d'être lu.
+        AntiDoubleAppui(enCours) {
+            val moi = partie.joueur(enCours)
+            val aime = moi.amoureuxDe?.let(partie::joueur)
+            Page(bas = {
+                GrosBouton("J'ai lu, je ferme les yeux et je passe") {
+                    vus = vus + enCours
+                    lecteur = null
+                }
+            }) {
+                if (aime != null) {
+                    Titre("${moi.nom}, tu es amoureux de ${aime.nom}")
+                    Recit("Si l'un de vous meurt, l'autre meurt de chagrin. Si vous êtes de camps opposés, vous gagnez ensemble en éliminant tous les autres.")
+                } else {
+                    Titre("${moi.nom}, la flèche de Cupidon ne t'a pas touché")
+                    Recit("Rien de nouveau pour toi. Ferme les yeux, et garde un air mystérieux.")
+                }
+            }
+        }
+        return
+    }
+    val restants = etape.joueurs.filter { it !in vus }.map(partie::joueur)
+    if (restants.isEmpty()) {
+        Page {
+            Titre("Tout le monde a lu son secret")
+            GrosBouton("Reposer la tablette au centre") { jouer(Action.Ok) }
+        }
+        return
+    }
+    AntiDoubleAppui(vus.size) {
+        Page {
+            if (vus.isEmpty()) {
+                Titre("Les flèches de Cupidon")
+                Recit(dit)
+                Recit("Premier joueur inscrit : ${partie.joueur(etape.joueurs.first()).nom}")
+            } else {
+                Titre("À qui le tour ?")
+                Recit("Touche ton prénom, sans rien montrer à personne.")
+            }
+            DesignerJoueur(restants, vus.size, { "Je suis ${it.nom}" }, Modifier.heightIn(max = 420.dp)) {
+                lecteur = it
+            }
+        }
+    }
 }
 
 @Composable

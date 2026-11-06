@@ -34,13 +34,10 @@ object Repliques {
         Replique("Cupidon ouvre les yeux. Choisis deux amoureux. Toi-même, si tu es d'humeur romantique.", R.raw.v03_05),
         Replique("Cupidon, à toi. Unis deux destins, ils ne pourront plus se défaire.", R.raw.v03_06),
     )
+    /** Le tour de tablette qui suit Cupidon : chacun lit en secret s'il est amoureux. */
     val amoureux = listOf(
-        Replique("Les Amoureux se réveillent et se découvrent. Profitez-en, ça ne durera peut-être pas.", R.raw.v04_01),
-        Replique("Amoureux, ouvrez les yeux et regardez-vous. Désormais, si l'un tombe, l'autre suit.", R.raw.v04_02),
-        Replique("Les Amoureux s'éveillent. Un regard suffit. C'est beau. C'est fragile.", R.raw.v04_03),
-        Replique("Amoureux, réveillez-vous et contemplez votre moitié. Votre moitié de cercueil, peut-être.", R.raw.v04_04),
-        Replique("Les Amoureux ouvrent les yeux. L'amour rend aveugle. Ici, il rend surtout mortel.", R.raw.v04_05),
-        Replique("Amoureux, découvrez-vous. Et rendormez-vous, main dans la main.", R.raw.v04_06),
+        Replique("Cupidon a tiré ses flèches. Reste à savoir qui elles ont transpercé. Premier joueur inscrit, ouvre les yeux et prends la tablette. Chacun son tour : lis ton secret, referme les yeux, et passe-la à ton voisin de gauche. Le dernier la repose au centre. En silence : un cœur qui bat trop fort, ça s'entend.", R.raw.v04_01),
+        Replique("Les flèches sont parties. Avant que les loups ne rôdent, la tablette va faire le tour du village. Premier joueur inscrit, ouvre les yeux et prends-la. Lis ton secret sans un bruit, referme les yeux, puis passe-la à ton voisin de gauche. Le dernier la repose au centre. Et surtout, gardez une tête d'enterrement. C'est de saison.", R.raw.v04_02),
     )
     val voyante = listOf(
         Replique("La Voyante se réveille. Choisis l'âme que tu veux sonder.", R.raw.v05_01),

@@ -25,7 +25,7 @@ class PartieTest {
             val e = etape
             if (e is T) return e
             when (e) {
-                is Etape.AppelFictif, is Etape.ReveilAmoureux, is Etape.VisionVoyante, is Etape.Annonce -> ok()
+                is Etape.AppelFictif, is Etape.DecouverteAmoureux, is Etape.VisionVoyante, is Etape.Annonce -> ok()
                 else -> error("Bloqué sur $e en attendant ${T::class.simpleName}")
             }
         }
@@ -37,7 +37,7 @@ class PartieTest {
         val p = partie(Role.CUPIDON, Role.VOYANTE, Role.LOUP_GAROU, Role.SORCIERE, Role.VILLAGEOIS)
         assertIs<Etape.AppelCupidon>(p.etape)
         p.jouer(Action.ChoixCupidon(1, 4))
-        assertEquals(Etape.ReveilAmoureux(1, 4), p.etape)
+        assertEquals(Etape.DecouverteAmoureux(listOf(0, 1, 2, 3, 4)), p.etape)
         p.ok()
         assertIs<Etape.AppelVoyante>(p.etape)
         p.jouer(Action.Designation(2))
@@ -102,6 +102,20 @@ class PartieTest {
         p.jouer(Action.ChoixLoups(3))
         val morts = (p.etape as Etape.Annonce).morts
         assertEquals(listOf(3 to CauseDeMort.LOUPS, 4 to CauseDeMort.CHAGRIN), morts.map { it.joueurId to it.cause })
+    }
+
+    @Test
+    fun `le tour des amoureux a lieu meme si cupidon est au centre`() {
+        val p = partie(Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS, centre = listOf(Role.CUPIDON))
+        assertEquals(Etape.AppelFictif(Appel.CUPIDON), p.etape)
+        p.ok()
+        assertEquals(Etape.DecouverteAmoureux(listOf(0, 1, 2, 3)), p.etape)
+        p.ok()
+        assertIs<Etape.AppelLoups>(p.etape)
+
+        // Sans Cupidon dans le paquet, pas de tour de tablette.
+        val q = partie(Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        assertIs<Etape.AppelLoups>(q.etape)
     }
 
     @Test
@@ -352,7 +366,7 @@ class PartieTest {
                         }
                         p.ok()
                     }
-                    is Etape.ReveilAmoureux, is Etape.VisionVoyante, is Etape.Annonce -> p.ok()
+                    is Etape.DecouverteAmoureux, is Etape.VisionVoyante, is Etape.Annonce -> p.ok()
                     is Etape.TirDuChasseur, is Etape.SuccessionCapitaine, Etape.ElectionCapitaine, is Etape.DepartageCapitaine ->
                         p.jouer(Action.Designation(if (e is Etape.DepartageCapitaine) e.exAequo.random(r) else vivants.random(r)))
                     is Etape.Vote -> p.jouer(Action.Elimination(e.candidats.random(r)))

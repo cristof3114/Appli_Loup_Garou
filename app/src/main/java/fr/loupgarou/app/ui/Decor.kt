@@ -86,7 +86,7 @@ fun ambianceDe(etape: Etape?, enTransition: Boolean): Ambiance {
     val ambiance = when (etape) {
         is Etape.AppelVoleur -> nuit.copy(embleme = R.drawable.embleme_voleur)
         is Etape.AppelCupidon -> nuit.copy(embleme = R.drawable.embleme_cupidon)
-        is Etape.ReveilAmoureux -> nuit.copy(embleme = R.drawable.embleme_amoureux)
+        is Etape.DecouverteAmoureux -> nuit.copy(embleme = R.drawable.embleme_amoureux)
         is Etape.AppelVoyante, is Etape.VisionVoyante -> nuit.copy(embleme = R.drawable.embleme_voyante)
         is Etape.AppelLoups -> nuit.copy(embleme = R.drawable.embleme_loups)
         is Etape.AppelSorciere -> nuit.copy(embleme = R.drawable.embleme_sorciere)
