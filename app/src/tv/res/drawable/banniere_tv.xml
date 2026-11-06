@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Bannière du menu de la télé (320 × 180) : le loup de l'icône sur la nuit. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#120D14" />
+        </shape>
+    </item>
+    <item android:width="180dp" android:height="180dp" android:gravity="center" android:drawable="@drawable/ic_launcher_fond" />
+    <item android:width="180dp" android:height="180dp" android:gravity="center" android:drawable="@drawable/ic_launcher_loup" />
+</layer-list>

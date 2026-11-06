@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
@@ -142,10 +143,13 @@ private fun placeDe(index: Int): Place {
 @Composable
 fun Decor(ambiance: Ambiance, morts: List<Mort>, contenu: @Composable () -> Unit) {
     val encre = encreDe(ambiance.ciel)
-    BoxWithConstraints(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(encre.fond)) {
+        // Sur un écran couché (la télé), le village tient en entier à gauche et les panneaux
+        // se placent à sa droite. Sinon, il remplit l'écran.
+        val paysage = maxWidth > maxHeight
         // Taille d'une unité de la planche, et position de la planche (calée en bas, centrée).
-        val u = maxOf(maxWidth / LARGEUR, maxHeight / HAUTEUR)
-        val gauche = (maxWidth - u * LARGEUR) / 2
+        val u = if (paysage) maxHeight / HAUTEUR else maxOf(maxWidth / LARGEUR, maxHeight / HAUTEUR)
+        val gauche = if (paysage) maxWidth * 0.04f else (maxWidth - u * LARGEUR) / 2
         val haut = maxHeight - u * HAUTEUR
 
         Crossfade(ambiance.ciel, animationSpec = tween(1200), label = "ciel") { ciel ->
@@ -154,7 +158,7 @@ fun Decor(ambiance: Ambiance, morts: List<Mort>, contenu: @Composable () -> Unit
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 alignment = Alignment.BottomCenter,
-                modifier = Modifier.fillMaxSize(),
+                modifier = if (paysage) Modifier.offset(gauche, haut).size(u * LARGEUR, u * HAUTEUR) else Modifier.fillMaxSize(),
             )
         }
 
@@ -178,7 +182,13 @@ fun Decor(ambiance: Ambiance, morts: List<Mort>, contenu: @Composable () -> Unit
         }
 
         CompositionLocalProvider(LocalEncre provides encre, LocalContentColor provides encre.texte) {
-            MaterialTheme(colorScheme = couleursDe(encre)) { contenu() }
+            MaterialTheme(colorScheme = couleursDe(encre)) {
+                if (paysage) {
+                    Box(Modifier.fillMaxSize().padding(start = gauche * 2 + u * LARGEUR)) { contenu() }
+                } else {
+                    contenu()
+                }
+            }
         }
     }
 }

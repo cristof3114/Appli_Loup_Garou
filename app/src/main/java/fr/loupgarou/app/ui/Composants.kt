@@ -1,6 +1,10 @@
 package fr.loupgarou.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.composed
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,12 +81,24 @@ fun Recit(texte: String) {
     Text(texte, fontSize = 20.sp, textAlign = TextAlign.Center, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
+/**
+ * Contour bien visible autour du bouton qui a le focus : sur la télé, c'est ce qui montre où
+ * l'on est quand on se déplace avec les flèches de la télécommande.
+ */
+fun Modifier.contourFocus(): Modifier = composed {
+    var focus by remember { mutableStateOf(false) }
+    val couleur = LocalEncre.current.texte
+    this
+        .onFocusChanged { focus = it.isFocused }
+        .border(if (focus) 3.dp else 0.dp, if (focus) couleur else Color.Transparent, RoundedCornerShape(28.dp))
+}
+
 @Composable
 fun GrosBouton(texte: String, actif: Boolean = true, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         enabled = actif,
-        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp).contourFocus(),
     ) { Text(texte, fontSize = 20.sp, modifier = Modifier.padding(8.dp)) }
 }
 
@@ -102,10 +118,11 @@ fun ChoixJoueur(
     ) {
         items(joueurs, key = { it.id }) { j ->
             if (j.id in selectionnes) {
-                Button(onClick = { onChoix(j) }) { Text(j.nom, fontSize = 18.sp) }
+                Button(onClick = { onChoix(j) }, modifier = Modifier.contourFocus()) { Text(j.nom, fontSize = 18.sp) }
             } else {
                 OutlinedButton(
                     onClick = { onChoix(j) },
+                    modifier = Modifier.contourFocus(),
                     colors = ButtonDefaults.outlinedButtonColors(),
                 ) { Text(j.nom, fontSize = 18.sp) }
             }
