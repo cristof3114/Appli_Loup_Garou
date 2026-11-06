@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
+import fr.loupgarou.app.BuildConfig
 import fr.loupgarou.app.PartieViewModel
 import fr.loupgarou.engine.Action
 import fr.loupgarou.engine.Etape
@@ -82,20 +83,23 @@ fun EcranSalon(vm: PartieViewModel) {
                         "ou activez son point d'accès pour que les téléphones s'y connectent.",
                 )
             }
-            TextButton(onClick = vm::actualiserAdresse) { Text("Actualiser l'adresse") }
+            TextButton(onClick = vm::actualiserAdresse, modifier = Modifier.contourFocus()) { Text("Actualiser l'adresse") }
         }
         item { Text("Joueurs connectés (${salon.places.size})", fontSize = 24.sp, modifier = Modifier.padding(top = 8.dp)) }
         items(salon.places.toList(), key = { it.id }) { place ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(place.nom, fontSize = 18.sp, modifier = Modifier.weight(1f))
-                TextButton(onClick = { vm.retirerDuSalon(place.id) }) { Text("Retirer") }
+                TextButton(onClick = { vm.retirerDuSalon(place.id) }, modifier = Modifier.contourFocus()) { Text("Retirer") }
             }
         }
         editeurComposition(vm)
         item {
             GrosBouton("Distribuer les rôles au hasard", actif = vm.peutCommencer()) { vm.distribuerAuxTelephones() }
         }
-        item { TextButton(onClick = vm::fermerSalon) { Text("Jouer plutôt sur une seule tablette") } }
+        // La télé ne sait faire que le meneur : pas de retour au jeu sur un seul appareil.
+        if (!BuildConfig.TELE) {
+            item { TextButton(onClick = vm::fermerSalon, modifier = Modifier.contourFocus()) { Text("Jouer plutôt sur une seule tablette") } }
+        }
         item { Text("") }
     }
 }
@@ -170,7 +174,7 @@ fun EcranJeuMulti(vm: PartieViewModel) {
         else -> false
     }
     Page(bas = {
-        TextButton(onClick = { secours = true }) {
+        TextButton(onClick = { secours = true }, modifier = Modifier.contourFocus()) {
             Text("Un téléphone ne répond plus ? Jouer cette étape sur la tablette", textAlign = TextAlign.Center)
         }
     }) {

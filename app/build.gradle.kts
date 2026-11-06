@@ -12,8 +12,23 @@ android {
         applicationId = "fr.loupgarou.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 4
+        versionName = "0.4"
+    }
+
+    // Deux applis depuis le même code : la tablette (ou le téléphone) au centre de la table,
+    // et la télé, qui fait le meneur pendant que chacun joue sur son téléphone.
+    flavorDimensions += "appareil"
+    productFlavors {
+        create("tablette") {
+            dimension = "appareil"
+            buildConfigField("boolean", "TELE", "false")
+        }
+        create("tv") {
+            dimension = "appareil"
+            applicationIdSuffix = ".tv"
+            buildConfigField("boolean", "TELE", "true")
+        }
     }
 
     buildTypes {
@@ -33,6 +48,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

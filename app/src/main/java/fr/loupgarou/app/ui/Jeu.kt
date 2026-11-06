@@ -256,7 +256,7 @@ private fun Loups(partie: Partie, etape: Etape.AppelLoups, jouer: (Action) -> Un
             surprise = it.id
             signalerPetiteFille = false
         }
-        TextButton(onClick = { signalerPetiteFille = false }) { Text("Retour", fontSize = 18.sp) }
+        TextButton(onClick = { signalerPetiteFille = false }, modifier = Modifier.contourFocus()) { Text("Retour", fontSize = 18.sp) }
     }
 }
 
@@ -276,7 +276,7 @@ private fun Sorciere(partie: Partie, etape: Etape.AppelSorciere, jouer: (Action)
             poison = it.id
             choisirPoison = false
         }
-        TextButton(onClick = { choisirPoison = false }) { Text("Retour", fontSize = 18.sp) }
+        TextButton(onClick = { choisirPoison = false }, modifier = Modifier.contourFocus()) { Text("Retour", fontSize = 18.sp) }
         return
     }
     val victime = etape.victime?.let(partie::joueur)
@@ -290,7 +290,7 @@ private fun Sorciere(partie: Partie, etape: Etape.AppelSorciere, jouer: (Action)
         Bascule(poison?.let { "Empoisonner ${partie.joueur(it).nom}" } ?: "Empoisonner quelqu'un", poison != null) {
             choisirPoison = true
         }
-        if (poison != null) TextButton(onClick = { poison = null }) { Text("Ne plus empoisonner", fontSize = 18.sp) }
+        if (poison != null) TextButton(onClick = { poison = null }, modifier = Modifier.contourFocus()) { Text("Ne plus empoisonner", fontSize = 18.sp) }
     } else {
         Recit("Ta potion de poison est déjà utilisée.")
     }
@@ -301,7 +301,7 @@ private fun Sorciere(partie: Partie, etape: Etape.AppelSorciere, jouer: (Action)
 /** Gros bouton à deux états : plein quand il est choisi, en contour sinon. */
 @Composable
 private fun Bascule(texte: String, choisi: Boolean, onClick: () -> Unit) {
-    val modifier = Modifier.fillMaxWidth()
+    val modifier = Modifier.fillMaxWidth().contourFocus()
     if (choisi) {
         Button(onClick = onClick, modifier = modifier) { Text(texte, fontSize = 20.sp, modifier = Modifier.padding(8.dp)) }
     } else {
@@ -341,7 +341,7 @@ private fun Vote(vm: PartieViewModel, partie: Partie, etape: Etape.Vote, jouer: 
                 choisis = if (it.id in choisis) choisis - it.id else choisis + it.id
             }
             GrosBouton("Valider l'égalité", actif = choisis.size >= 2) { jouer(Action.Egalite(choisis.toList())) }
-            TextButton(onClick = { modeEgalite = false; choisis = emptySet() }) { Text("Annuler") }
+            TextButton(onClick = { modeEgalite = false; choisis = emptySet() }, modifier = Modifier.contourFocus()) { Text("Annuler") }
         }
     }
 }
@@ -350,5 +350,5 @@ private fun Vote(vm: PartieViewModel, partie: Partie, etape: Etape.Vote, jouer: 
 @Composable
 fun Paroles(vm: PartieViewModel) {
     vm.paroles.forEach { Recit(it.texte) }
-    if (vm.paroles.isNotEmpty()) TextButton(onClick = vm::repeter) { Text("Répéter") }
+    if (vm.paroles.isNotEmpty()) TextButton(onClick = vm::repeter, modifier = Modifier.contourFocus()) { Text("Répéter") }
 }

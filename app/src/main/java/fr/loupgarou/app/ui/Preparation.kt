@@ -68,7 +68,7 @@ fun EcranPreparation(vm: PartieViewModel) {
         items(vm.noms.toList()) { nom ->
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(nom, fontSize = 18.sp, modifier = Modifier.weight(1f))
-                TextButton(onClick = { vm.retirerJoueur(nom) }) { Text("Retirer") }
+                TextButton(onClick = { vm.retirerJoueur(nom) }, modifier = Modifier.contourFocus()) { Text("Retirer") }
             }
         }
 
@@ -92,15 +92,15 @@ fun LazyListScope.editeurComposition(vm: PartieViewModel) {
                 fontSize = 24.sp,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = vm::proposerComposition, enabled = vm.noms.size >= 4) { Text("Proposer") }
+            TextButton(onClick = vm::proposerComposition, enabled = vm.noms.size >= 4, modifier = Modifier.contourFocus()) { Text("Proposer") }
         }
     }
     items(Role.entries) { role ->
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(role.nom, fontSize = 18.sp, modifier = Modifier.weight(1f))
-            TextButton(onClick = { vm.retirerCarte(role) }) { Text("−", fontSize = 22.sp) }
+            TextButton(onClick = { vm.retirerCarte(role) }, modifier = Modifier.contourFocus()) { Text("−", fontSize = 22.sp) }
             Text("${vm.paquet.count { it == role }}", fontSize = 18.sp)
-            TextButton(onClick = { vm.ajouterCarte(role) }) { Text("+", fontSize = 22.sp) }
+            TextButton(onClick = { vm.ajouterCarte(role) }, modifier = Modifier.contourFocus()) { Text("+", fontSize = 22.sp) }
         }
     }
     items(vm.avertissements()) { a ->

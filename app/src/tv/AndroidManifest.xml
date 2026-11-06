@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    L'appli télé : la télé fait le meneur (voix, QR code, morts à l'écran) et chacun joue sur
+    son téléphone. Elle se pilote à la télécommande et apparaît dans le menu de la télé.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+
+    <application android:banner="@drawable/banniere_tv">
+        <activity
+            android:name=".MainActivity"
+            android:screenOrientation="landscape"
+            tools:replace="android:screenOrientation">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

@@ -24,23 +24,26 @@ jobs:
       - name: Tests du moteur de règles
         run: ./gradlew :engine:test
 
-      - name: Construire l'APK
-        run: ./gradlew :app:assembleDebug
+      - name: Construire les APK (tablette et télé)
+        run: ./gradlew :app:assembleTabletteDebug :app:assembleTvDebug
 
       - uses: actions/upload-artifact@v4
         with:
           name: loup-garou-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/tablette/debug/app-tablette-debug.apk
+            app/build/outputs/apk/tv/debug/app-tv-debug.apk
 
-      # Sur main, l'APK est aussi publié en téléchargement direct (sans zip),
+      # Sur main, les APK sont aussi publiés en téléchargement direct (sans zip),
       # dans la publication « derniere-version » du dépôt.
-      - name: Publier l'APK
+      - name: Publier les APK
         if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk loup-garou.apk
+          cp app/build/outputs/apk/tablette/debug/app-tablette-debug.apk loup-garou.apk
+          cp app/build/outputs/apk/tv/debug/app-tv-debug.apk loup-garou-tv.apk
           gh release delete derniere-version --yes --cleanup-tag || true
-          gh release create derniere-version loup-garou.apk \
+          gh release create derniere-version loup-garou.apk loup-garou-tv.apk \
             --title "Dernière version" \
-            --notes "APK construit depuis le commit ${GITHUB_SHA::7}. Télécharge loup-garou.apk depuis le téléphone pour l'installer."
+            --notes "APK construit depuis le commit ${GITHUB_SHA::7}. Télécharge loup-garou.apk depuis la tablette, ou loup-garou-tv.apk depuis la télé, pour l'installer."

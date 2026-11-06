@@ -287,6 +287,11 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    init {
+        // La télé fait toujours le meneur d'une partie où chacun joue sur son téléphone.
+        if (BuildConfig.TELE) ouvrirSalon()
+    }
+
     private companion object {
         /** Silence entre « rendors-toi » et l'appel suivant. */
         const val PAUSE_TRANSITION_MS = 2_500L
