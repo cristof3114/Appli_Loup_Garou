@@ -75,9 +75,14 @@ object Narration {
 
     private fun annonce(etape: Etape.Annonce): List<Replique> {
         val intro = when (etape.moment) {
-            Moment.MATIN -> une(if (etape.morts.isEmpty()) Repliques.matinPersonne else Repliques.matinMorts)
-            Moment.VOTE -> une(Repliques.condamne)
-            Moment.TIR_DU_CHASSEUR -> une(Repliques.tirDuChasseur)
+            Moment.MATIN -> buildList {
+                // L'ouverture, puis le nombre de morts dit clairement, puis le sauvetage éventuel.
+                add(une(if (etape.morts.isEmpty()) Repliques.matinPersonne else Repliques.matinMorts))
+                Repliques.nombreDeMorts[etape.morts.size.coerceAtMost(4)]?.let { add(une(it)) }
+                if (etape.sauvee) add(une(Repliques.sauvetage))
+            }
+            Moment.VOTE -> listOf(une(Repliques.condamne))
+            Moment.TIR_DU_CHASSEUR -> listOf(une(Repliques.tirDuChasseur))
         }
         val morts = etape.morts.flatMap { m ->
             listOfNotNull(
@@ -85,7 +90,7 @@ object Narration {
                 une(Repliques.revelation.getValue(m.role)),
             )
         }
-        return listOf(intro) + morts
+        return intro + morts
     }
 
     fun fin(camp: Camp): Replique = une(Repliques.fin.getValue(camp))
