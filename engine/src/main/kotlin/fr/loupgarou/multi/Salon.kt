@@ -55,6 +55,12 @@ class Salon(private val hasard: Random = Random) {
     private val lus = mutableSetOf<Int>()
     private var guerir = false
 
+    // --- La messagerie de la meute, gardée d'une nuit à l'autre, effacée à chaque partie ---
+
+    private class MessageMeute(val de: Int, val texte: String, val nuit: Int)
+
+    private val meute = mutableListOf<MessageMeute>()
+
     /** Le décompte du dernier vote, montré à tous à l'annonce qui suit. */
     var dernierDecompte: String? = null
         private set
@@ -106,6 +112,7 @@ class Salon(private val hasard: Random = Random) {
         phase = Phase.JEU
         etapeSuivie = null
         dernierDecompte = null
+        meute.clear()
         return p
     }
 
@@ -116,7 +123,40 @@ class Salon(private val hasard: Random = Random) {
         roles = emptyMap()
         etapeSuivie = null
         dernierDecompte = null
+        meute.clear()
     }
+
+    /**
+     * Un loup écrit à sa meute. Possible seulement pendant le tour des loups, pour un loup vivant
+     * qui n'est pas seul. Renvoie vrai si le message est gardé.
+     */
+    fun ecrireMeute(jeton: String?, texteBrut: String): Boolean {
+        val moi = place(jeton) ?: return false
+        if (phase != Phase.JEU || enTransition) return false
+        val p = partie ?: return false
+        val e = p.etape as? Etape.AppelLoups ?: return false
+        if (moi.id !in e.loups || e.loups.size < 2) return false
+        val texte = texteBrut.trim().replace(Regex("\\s+"), " ").take(MAX_MESSAGE)
+        if (texte.isEmpty()) return false
+        meute += MessageMeute(moi.id, texte, p.nuit)
+        while (meute.size > MAX_MESSAGES) meute.removeAt(0)
+        return true
+    }
+
+    /** La discussion vue par un loup : toute la partie, avec la nuit de chaque message. */
+    private fun vueMeute(p: Partie, moi: Int): Map<String, Any?> = mapOf(
+        "messages" to meute.map {
+            mapOf("de" to p.joueur(it.de).nom, "moi" to (it.de == moi), "texte" to it.texte, "nuit" to it.nuit)
+        },
+        "nuit" to p.nuit,
+        "rapides" to buildList {
+            add("D'accord")
+            add("Pas lui")
+            if (Role.VOYANTE in p.paquet) add("Je pense que c'est la Voyante")
+            if (Role.SORCIERE in p.paquet) add("Méfiance, la Sorcière veille")
+            add("On se dépêche")
+        },
+    )
 
     // --- Ce que les téléphones envoient ---
 
@@ -364,7 +404,7 @@ class Salon(private val hasard: Random = Random) {
                 val marques = e.loups.mapNotNull { l -> propositions[l]?.let { it.cible to p.joueur(l).nom + if (it.petiteFille) " (Petite fille !)" else "" } }
                     .groupBy({ it.first }, { it.second })
                 val autres = e.loups.filter { it != j.id }.map { p.joueur(it).nom }
-                ecran(
+                val ecranLoups = ecran(
                     "nuit", "Loups, qui dévorez-vous\u00A0?",
                     listOf(
                         if (autres.isEmpty()) "Tu chasses seul cette nuit." else "Ta meute\u00A0: ${autres.joinToString(", ")}.",
@@ -377,6 +417,7 @@ class Salon(private val hasard: Random = Random) {
                             listOf(bouton("{nom} est la Petite fille, on l'a surprise\u00A0!", "surprise", "requis", "Petite fille surprise\u00A0? Touche-la", discret = true))
                         } else emptyList(),
                 )
+                if (autres.isEmpty()) ecranLoups else ecranLoups + ("meute" to vueMeute(p, j.id))
             }
             is Etape.AppelSorciere -> if (e.sorciere != j.id) dodo(j) else {
                 val victime = e.victime?.let(p::joueur)
@@ -626,6 +667,8 @@ class Salon(private val hasard: Random = Random) {
 
     companion object {
         const val MAX_JOUEURS = 24
+        const val MAX_MESSAGE = 200
+        const val MAX_MESSAGES = 300
         private const val ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"
     }
 }
