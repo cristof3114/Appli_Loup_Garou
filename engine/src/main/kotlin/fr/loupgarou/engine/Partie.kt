@@ -81,6 +81,8 @@ class Partie(
     private var guerie = false
     private val reactions = ArrayDeque<Etape>()
     private var suite: () -> Unit = {}
+    /** Vrai quand les annonces en cours mènent à la nuit (après le vote), faux quand elles mènent au vote. */
+    private var laNuitArrive = false
 
     init {
         require(joueurs.map { it.id }.toSet().size == joueurs.size) { "Identifiants de joueurs en double" }
@@ -254,6 +256,7 @@ class Partie(
             empoisonne?.let { add(it to CauseDeMort.POISON) }
         }
         suite = ::apresLeReveil
+        laNuitArrive = false
         annoncer(morts, Moment.MATIN, sauvee = guerie && victimeLoups != null)
     }
 
@@ -265,6 +268,7 @@ class Partie(
 
     private fun eliminerParVote(id: Int) {
         suite = ::commencerNuit
+        laNuitArrive = true
         annoncer(listOf(id to CauseDeMort.VOTE), Moment.VOTE)
     }
 
@@ -290,9 +294,17 @@ class Partie(
     }
 
     private fun traiterReactions() {
-        vainqueur()?.let {
+        vainqueur()?.let { gagnant ->
+            // Le Chasseur tire avant que la partie se termine : son tir peut encore abattre le dernier loup
+            // ou un amoureux. Seule une victoire du village ne peut plus être changée par son tir.
+            val tir = reactions.firstOrNull { it is Etape.TirDuChasseur }
+            if (tir != null && gagnant != Camp.VILLAGEOIS && vivants().isNotEmpty()) {
+                reactions.remove(tir)
+                etape = tir
+                return
+            }
             reactions.clear()
-            etape = Etape.Fin(it)
+            etape = Etape.Fin(gagnant)
             return
         }
         while (reactions.isNotEmpty()) {
@@ -315,6 +327,30 @@ class Partie(
         if (coupleMixte && vivants.size == 2 && vivants.all { it in couple }) return Camp.AMOUREUX
         if (vivants.none { it.role.estLoup }) return Camp.VILLAGEOIS
         if (vivants.all { it.role.estLoup }) return Camp.LOUPS
+        if (victoireCertaineDesLoups()) return Camp.LOUPS
         return null
+    }
+
+    /**
+     * Il ne reste qu'un seul non-loup et rien ne peut plus le sauver : inutile de jouer le tour.
+     * - Avant la nuit, les loups vont le dévorer.
+     * - Avant le vote, les loups l'éliminent s'ils sont au moins deux, ou si le Capitaine (vivant) est un loup
+     *   et tranche l'égalité à un contre un.
+     * On joue quand même le tour quand le dernier villageois peut encore tout changer : la Sorcière qui a
+     * une potion (la nuit), le Chasseur face à un seul loup (il l'abat en mourant), ou l'amoureux d'un loup
+     * (le couple mixte gagne ensemble).
+     */
+    private fun victoireCertaineDesLoups(): Boolean {
+        val loups = vivants().filter { it.role.estLoup }
+        val autres = vivants().filter { !it.role.estLoup }
+        val dernier = autres.singleOrNull() ?: return false
+        if (loups.isEmpty()) return false
+        if (dernier.amoureuxDe?.let { joueur(it).vivant && joueur(it).role.estLoup } == true) return false
+        if (dernier.role == Role.CHASSEUR && loups.size == 1) return false
+        return if (laNuitArrive) {
+            !(dernier.role == Role.SORCIERE && (potionGuerison || potionPoison))
+        } else {
+            loups.size >= 2 || capitaine?.let { joueur(it).vivant && joueur(it).role.estLoup } == true
+        }
     }
 }
