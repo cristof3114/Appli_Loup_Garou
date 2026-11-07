@@ -247,7 +247,7 @@ private fun Loups(partie: Partie, etape: Etape.AppelLoups, jouer: (Action) -> Un
     if (!signalerPetiteFille) {
         Titre("Qui dévorez-vous ?")
         ChoixJoueur(partie.vivants(), setOfNotNull(victime), Modifier.heightIn(max = 380.dp)) { victime = it.id }
-        if (Role.PETITE_FILLE in partie.paquet) {
+        if (Role.PETITE_FILLE in partie.rolesPossibles) {
             Bascule(
                 surprise?.let { "Petite fille surprise : ${partie.joueur(it).nom}" } ?: "Nous avons surpris la Petite fille",
                 surprise != null,

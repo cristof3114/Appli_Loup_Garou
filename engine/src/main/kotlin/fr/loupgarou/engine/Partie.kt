@@ -61,6 +61,12 @@ class Partie(
     val joueurs: List<Joueur>,
     val paquet: List<Role>,
     cartesDuCentre: List<Role> = emptyList(),
+    /**
+     * Les rôles que les joueurs croient possibles : ce sont eux qu'on appelle la nuit. C'est le
+     * paquet quand la composition est publique ; en Chaos (composition cachée), c'est tout
+     * l'éventail, pour que les appels ne trahissent pas les rôles absents.
+     */
+    val rolesPossibles: Set<Role> = paquet.toSet(),
 ) {
     var etape: Etape = Etape.Fin(Camp.PERSONNE)
         private set
@@ -86,6 +92,7 @@ class Partie(
 
     init {
         require(joueurs.map { it.id }.toSet().size == joueurs.size) { "Identifiants de joueurs en double" }
+        require(rolesPossibles.containsAll(paquet)) { "Un rôle du paquet manque aux rôles possibles" }
         commencerNuit()
     }
 
@@ -222,13 +229,13 @@ class Partie(
             Appel.LOUPS -> Role.LOUP_GAROU
             Appel.SORCIERE -> Role.SORCIERE
         }
-        if (roleAppele !in paquet) return null
+        if (roleAppele !in rolesPossibles) return null
         val titulaires = joueurs.filter { it.role == roleAppele }
         val vivants = titulaires.filter { it.vivant }
         // Rôle d'un mort : sa carte a été révélée, inutile de l'appeler.
         if (titulaires.isNotEmpty() && vivants.isEmpty()) return null
         if (appel == Appel.AMOUREUX) return Etape.DecouverteAmoureux(vivants().map { it.id })
-        // Carte restée au centre : appel fictif.
+        // Carte restée au centre, ou absente d'un paquet caché : appel fictif.
         if (vivants.isEmpty()) return Etape.AppelFictif(appel)
         val titulaire = vivants.first().id
         return when (appel) {

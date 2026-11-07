@@ -12,11 +12,15 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import fr.loupgarou.engine.Action
 import fr.loupgarou.engine.Appel
+import fr.loupgarou.engine.Composition
+import fr.loupgarou.engine.Eventail
 import fr.loupgarou.engine.Etape
 import fr.loupgarou.engine.Joueur
 import fr.loupgarou.engine.Partie
 import fr.loupgarou.engine.Role
+import fr.loupgarou.engine.Reglages
 import fr.loupgarou.engine.Setup
+import fr.loupgarou.engine.TypeDePartie
 
 enum class Ecran { PREPARATION, DECLARATION, SALON, JEU }
 
@@ -32,6 +36,20 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
 
     val noms = mutableStateListOf<String>()
     val paquet = mutableStateListOf<Role>()
+
+    /** Type de partie et interrupteurs (1 loup, Loups enragés), gardés d'une partie à l'autre. */
+    var reglages by mutableStateOf(Reglages())
+        private set
+
+    /** Non nul en Chaos : la composition est cachée, on ne montre que cet éventail. */
+    var eventail by mutableStateOf<Eventail?>(null)
+        private set
+
+    /** Sur une seule tablette en Chaos, le préparateur a demandé à voir les cartes à sortir. */
+    var cartesMontrees by mutableStateOf(false)
+
+    /** Nombre de joueurs pour lequel la composition a été tirée. */
+    private var composePour = 0
 
     /** Rôle déclaré par chaque joueur, dans l'ordre de [noms]. */
     val declarations = mutableStateListOf<Role>()
@@ -69,27 +87,76 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
     fun ajouterJoueur(nom: String) {
         val propre = nom.trim()
         if (propre.isNotEmpty() && propre !in noms) noms.add(propre)
+        suivreNombreDeJoueurs()
     }
 
     fun retirerJoueur(nom: String) {
         noms.remove(nom)
+        suivreNombreDeJoueurs()
     }
 
+    /** Hors Personnalisé, la composition suit le nombre de joueurs. */
+    private fun suivreNombreDeJoueurs() {
+        if (reglages.type != TypeDePartie.PERSONNALISE && noms.size != composePour) proposerComposition()
+    }
+
+    /** (Re)compose le paquet selon les réglages. En Chaos, c'est aussi le bouton « Relancer ». */
     fun proposerComposition() {
-        if (noms.size < 4) return
+        cartesMontrees = false
+        if (noms.size < 4) {
+            paquet.clear()
+            eventail = null
+            composePour = noms.size
+            return
+        }
+        val c = Composition.pour(noms.size, reglages)
         paquet.clear()
-        paquet.addAll(Setup.compositionProposee(noms.size))
+        paquet.addAll(c.paquet)
+        eventail = c.eventail
+        composePour = noms.size
     }
 
+    fun choisirType(type: TypeDePartie) {
+        if (type == reglages.type) return
+        reglages = reglages.copy(type = type)
+        // Passer en Personnalisé garde le paquet affiché, sauf s'il était caché.
+        if (type != TypeDePartie.PERSONNALISE || eventail != null) proposerComposition()
+    }
+
+    fun basculerUnSeulLoup() {
+        reglages = reglages.copy(unSeulLoup = !reglages.unSeulLoup)
+        if (reglages.type != TypeDePartie.PERSONNALISE) proposerComposition()
+    }
+
+    fun basculerLoupsEnrages() {
+        reglages = reglages.copy(loupsEnrages = !reglages.loupsEnrages)
+        if (reglages.type != TypeDePartie.PERSONNALISE) proposerComposition()
+    }
+
+    /** Modifier une carte à la main fait passer en Personnalisé. */
     fun ajouterCarte(role: Role) {
+        passerEnPersonnalise()
         paquet.add(role)
     }
 
     fun retirerCarte(role: Role) {
+        passerEnPersonnalise()
         paquet.remove(role)
     }
 
-    fun avertissements() = Setup.avertissements(paquet.toList(), noms.size)
+    private fun passerEnPersonnalise() {
+        if (reglages.type != TypeDePartie.PERSONNALISE) reglages = reglages.copy(type = TypeDePartie.PERSONNALISE)
+        eventail = null
+    }
+
+    /** La composition à jouer, avec son éventail si elle est cachée. */
+    fun composition() = Composition(paquet.toList(), eventail)
+
+    /** Le badge « hors règles » : un seul loup est prévu ou possible. */
+    fun horsRegles() = noms.size >= 4 && paquet.isNotEmpty() && composition().horsRegles
+
+    fun avertissements() = if (eventail != null) emptyList()
+    else Setup.avertissements(paquet.toList(), noms.size, unSeulLoupPermis = reglages.unSeulLoup)
 
     fun peutCommencer(): Boolean {
         if (noms.size < 4) return false
@@ -116,7 +183,7 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
             return
         }
         val joueurs = noms.mapIndexed { i, nom -> Joueur(i, nom, declarations[i]) }
-        val nouvelle = Partie(joueurs, paquet.toList(), centre)
+        val nouvelle = Partie(joueurs, paquet.toList(), centre, composition().rolesPossibles)
         partie = nouvelle
         narrer(null, nouvelle.etape)
         version++
@@ -229,6 +296,7 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
         if (noms.toList() != actuels) {
             noms.clear()
             noms.addAll(actuels)
+            if (salon.phase == fr.loupgarou.multi.Salon.Phase.INSCRIPTION) suivreNombreDeJoueurs()
         }
         versionSalon++
     }
@@ -236,7 +304,7 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
     fun distribuerAuxTelephones() {
         val salon = multi?.salon ?: return
         if (!peutCommencer()) return
-        salon.distribuer(paquet.toList())
+        salon.distribuer(composition())
         versionSalon++
     }
 
@@ -276,6 +344,8 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
         voix.arreter()
         paroles = emptyList()
         partie = null
+        // Une nouvelle partie Chaos se tire à nouveau : l'ancienne composition a été dévoilée par les morts.
+        if (reglages.type == TypeDePartie.CHAOS) proposerComposition()
         val hote = multi
         if (hote != null) {
             hote.salon.rejouer()
