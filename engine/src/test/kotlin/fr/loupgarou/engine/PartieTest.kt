@@ -167,7 +167,7 @@ class PartieTest {
     @Test
     fun `un role reste au centre est appele pour du faux, un role mort ne l'est plus`() {
         val p = partie(
-            Role.VOLEUR, Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VOYANTE, Role.VILLAGEOIS,
+            Role.VOLEUR, Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VOYANTE, Role.VILLAGEOIS, Role.VILLAGEOIS,
             centre = listOf(Role.SORCIERE, Role.VILLAGEOIS),
         )
         p.jouer(Action.ChoixVoleur(null))
@@ -197,16 +197,16 @@ class PartieTest {
 
     @Test
     fun `le capitaine mort designe son successeur`() {
-        val p = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        val p = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS)
         p.jusqua<Etape.AppelLoups>()
-        p.jouer(Action.ChoixLoups(5)); p.ok()
+        p.jouer(Action.ChoixLoups(6)); p.ok()
         p.jouer(Action.Designation(2))
         p.jouer(Action.Elimination(2)); p.ok()
         assertEquals(Etape.SuccessionCapitaine(2), p.etape)
         p.jouer(Action.Designation(3))
         assertEquals(3, p.capitaine)
         assertIs<Etape.AppelLoups>(p.etape)
-        p.jouer(Action.ChoixLoups(4)); p.ok()
+        p.jouer(Action.ChoixLoups(5)); p.ok()
         p.jouer(Action.Egalite(listOf(0, 1)))
         assertEquals(Etape.DepartageCapitaine(3, listOf(0, 1)), p.etape)
     }
@@ -220,11 +220,11 @@ class PartieTest {
         v.jouer(Action.Elimination(0)); v.ok()
         assertEquals(Etape.Fin(Camp.VILLAGEOIS), v.etape)
 
-        val l = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        val l = partie(Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS)
         l.jusqua<Etape.AppelLoups>()
-        l.jouer(Action.ChoixLoups(3)); l.ok()
+        l.jouer(Action.ChoixLoups(2)); l.ok()
         l.jouer(Action.Designation(0))
-        l.jouer(Action.Elimination(2)); l.ok()
+        l.jouer(Action.Elimination(1)); l.ok()
         assertEquals(Etape.Fin(Camp.LOUPS), l.etape)
 
         val a = partie(Role.CUPIDON, Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VILLAGEOIS)
@@ -235,6 +235,70 @@ class PartieTest {
         a.jouer(Action.Designation(1))
         a.jouer(Action.Elimination(2)); a.ok()
         assertEquals(Etape.Fin(Camp.AMOUREUX), a.etape)
+    }
+
+    @Test
+    fun `victoire des loups des que le dernier villageois ne peut plus echapper`() {
+        // Avant la nuit : les loups vont dévorer le dernier villageois.
+        val n = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        n.jusqua<Etape.AppelLoups>()
+        n.jouer(Action.ChoixLoups(4)); n.ok()
+        n.jouer(Action.Designation(2))
+        n.jouer(Action.Elimination(2)); n.ok()
+        assertEquals(Etape.Fin(Camp.LOUPS), n.etape)
+
+        // Avant le vote : deux loups contre un villageois.
+        val m = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        m.jusqua<Etape.AppelLoups>()
+        m.jouer(Action.ChoixLoups(3)); m.ok()
+        assertEquals(Etape.Fin(Camp.LOUPS), m.etape)
+    }
+
+    @Test
+    fun `un loup contre un villageois le matin, c'est le capitaine qui decide`() {
+        fun jusquAuDuel(capitaine: Int): Partie {
+            val p = partie(Role.LOUP_GAROU, Role.SORCIERE, Role.VILLAGEOIS, Role.VILLAGEOIS)
+            p.jusqua<Etape.AppelLoups>()
+            p.jouer(Action.ChoixLoups(3))
+            p.jouer(Action.ChoixSorciere(guerir = false, empoisonner = null)); p.ok()
+            p.jouer(Action.Designation(capitaine))
+            p.jouer(Action.Elimination(2)); p.ok()
+            // La Sorcière a encore ses potions : la nuit se joue.
+            assertIs<Etape.AppelLoups>(p.etape)
+            p.jouer(Action.ChoixLoups(1))
+            p.jouer(Action.ChoixSorciere(guerir = true, empoisonner = null))
+            return p
+        }
+        val loupCapitaine = jusquAuDuel(capitaine = 0)
+        loupCapitaine.ok()
+        assertEquals(Etape.Fin(Camp.LOUPS), loupCapitaine.etape)
+
+        val sorciereCapitaine = jusquAuDuel(capitaine = 1)
+        sorciereCapitaine.ok()
+        assertIs<Etape.Vote>(sorciereCapitaine.etape)
+    }
+
+    @Test
+    fun `le chasseur dernier villageois tire encore sur le dernier loup`() {
+        val p = partie(Role.LOUP_GAROU, Role.CHASSEUR, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        p.jusqua<Etape.AppelLoups>()
+        p.jouer(Action.ChoixLoups(3)); p.ok()
+        p.jouer(Action.Designation(2))
+        p.jouer(Action.Elimination(2)); p.ok()
+        p.jouer(Action.Designation(1)) // succession du Capitaine
+        assertIs<Etape.AppelLoups>(p.etape)
+        p.jouer(Action.ChoixLoups(1)); p.ok()
+        assertEquals(Etape.TirDuChasseur(1), p.etape)
+        p.jouer(Action.Designation(0)); p.ok()
+        assertEquals(Etape.Fin(Camp.PERSONNE), p.etape)
+
+        // Face à deux loups, son tir ne peut plus rien changer.
+        val q = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.CHASSEUR, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        q.jusqua<Etape.AppelLoups>()
+        q.jouer(Action.ChoixLoups(4)); q.ok()
+        q.jouer(Action.Designation(0))
+        q.jouer(Action.Elimination(3)); q.ok()
+        assertEquals(Etape.Fin(Camp.LOUPS), q.etape)
     }
 
     @Test
