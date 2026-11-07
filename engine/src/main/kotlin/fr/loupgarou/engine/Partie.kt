@@ -27,7 +27,11 @@ sealed interface Etape {
 
     /** Rôle du paquet que personne ne tient (carte au centre) : on l'appelle quand même pour ne rien trahir. */
     data class AppelFictif(val appel: Appel) : Etape
-    data class Annonce(val morts: List<Mort>, val moment: Moment) : Etape
+    /**
+     * Annonce des morts. [sauvee] : au matin, la Sorcière a sauvé la victime des loups. La règle
+     * dit que le meneur révèle l'effet de la potion le matin suivant ; on ne dit pas qui était visé.
+     */
+    data class Annonce(val morts: List<Mort>, val moment: Moment, val sauvee: Boolean = false) : Etape
     data class TirDuChasseur(val chasseur: Int) : Etape
     data class SuccessionCapitaine(val capitaine: Int) : Etape
     data object ElectionCapitaine : Etape
@@ -250,7 +254,7 @@ class Partie(
             empoisonne?.let { add(it to CauseDeMort.POISON) }
         }
         suite = ::apresLeReveil
-        annoncer(morts, Moment.MATIN)
+        annoncer(morts, Moment.MATIN, sauvee = guerie && victimeLoups != null)
     }
 
     // --- Jour ---
@@ -266,11 +270,11 @@ class Partie(
 
     // --- Morts et réactions en chaîne ---
 
-    private fun annoncer(morts: List<Pair<Int, CauseDeMort>>, moment: Moment) {
+    private fun annoncer(morts: List<Pair<Int, CauseDeMort>>, moment: Moment, sauvee: Boolean = false) {
         val annonce = mutableListOf<Mort>()
         morts.forEach { (id, cause) -> tuer(id, cause, annonce) }
         historique += annonce
-        etape = Etape.Annonce(annonce, moment)
+        etape = Etape.Annonce(annonce, moment, sauvee)
     }
 
     private fun tuer(id: Int, cause: CauseDeMort, annonce: MutableList<Mort>) {

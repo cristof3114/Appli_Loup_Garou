@@ -15,6 +15,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import fr.loupgarou.engine.Bilan
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import fr.loupgarou.app.PartieViewModel
@@ -68,11 +71,14 @@ fun EcranJeu(vm: PartieViewModel) {
         is Etape.AppelLoups -> AppelDeNuit(dit, vm.version) { Loups(partie, etape, jouer) }
         is Etape.AppelSorciere -> AppelDeNuit(dit, vm.version) { Sorciere(partie, etape, jouer) }
         is Etape.Annonce -> Page {
-            Paroles(vm)
+            // Le bilan d'abord, en gros : combien de morts, et qui.
+            Titre(Bilan.titre(etape))
+            Bilan.sauvetage(etape)?.let { Recit(it) }
             etape.morts.forEach { m ->
-                val chagrin = if (m.cause == CauseDeMort.CHAGRIN) ", mort de chagrin" else ""
-                Titre("${m.nom} était ${m.role.nom}$chagrin")
+                Text(m.nom, fontSize = 34.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+                Recit(Bilan.ligne(m).removePrefix(m.nom).trim())
             }
+            Paroles(vm)
             GrosBouton("Continuer") { jouer(Action.Ok) }
         }
         is Etape.TirDuChasseur -> Page {

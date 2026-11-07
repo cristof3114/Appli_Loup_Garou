@@ -93,13 +93,13 @@ object Repliques {
         Replique("Réveillez-vous. Enfin, ceux qui le peuvent encore.", R.raw.v09_09),
         Replique("Le jour se lève, et avec lui, une odeur qui ne trompe pas.", R.raw.v09_10),
     )
+    // Les loups désignent toujours une victime : un matin sans mort veut dire que la Sorcière l'a
+    // sauvée. Pas de phrase qui ferait croire que les loups n'ont pas attaqué.
     val matinPersonne = listOf(
-        Replique("Le village se réveille… au complet. Les loups ont eu une nuit difficile.", R.raw.v10_01),
         Replique("Le soleil se lève et, miracle, personne ne manque à l'appel.", R.raw.v10_02),
         Replique("C'est le matin. Tout le monde est là. Étrange… et un peu décevant.", R.raw.v10_03),
         Replique("Réveillez-vous. Personne n'est mort cette nuit. Ne vous habituez pas.", R.raw.v10_04),
         Replique("Le village s'éveille, entier. Quelqu'un, quelque part, a été bien inspiré.", R.raw.v10_05),
-        Replique("Le jour se lève sans cadavre. Les loups ont jeûné. Ils seront d'autant plus affamés.", R.raw.v10_06),
         Replique("Ouvrez les yeux. Pas une goutte de sang. Pour l'instant.", R.raw.v10_07),
         Replique("Le coq chante pour tout le monde, ce matin. Profitez-en.", R.raw.v10_08),
     )

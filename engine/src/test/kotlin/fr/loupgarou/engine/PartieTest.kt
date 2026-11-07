@@ -91,7 +91,38 @@ class PartieTest {
         p.jouer(Action.ChoixLoups(2))
         p.jouer(Action.ChoixSorciere(guerir = true, empoisonner = null))
         assertEquals(emptyList(), (p.etape as Etape.Annonce).morts)
+        assertTrue((p.etape as Etape.Annonce).sauvee)
         assertTrue(p.joueur(2).vivant)
+    }
+
+    @Test
+    fun `le matin dit si la victime a ete sauvee, meme quand le poison tue`() {
+        val p = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.SORCIERE, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        p.jusqua<Etape.AppelLoups>()
+        p.jouer(Action.ChoixLoups(3))
+        p.jouer(Action.ChoixSorciere(guerir = true, empoisonner = 4))
+        val annonce = p.etape as Etape.Annonce
+        assertEquals(listOf(4), annonce.morts.map { it.joueurId })
+        assertTrue(annonce.sauvee)
+    }
+
+    @Test
+    fun `le bilan du matin dit combien de joueurs sont morts`() {
+        val m = Mort(1, "Léa", Role.VOYANTE, CauseDeMort.LOUPS)
+        assertEquals("Personne n'est mort cette nuit", Bilan.titre(Etape.Annonce(emptyList(), Moment.MATIN, sauvee = true)))
+        assertEquals("Cette nuit\u00A0: 1 mort", Bilan.titre(Etape.Annonce(listOf(m), Moment.MATIN)))
+        assertEquals("Cette nuit\u00A0: 2 morts", Bilan.titre(Etape.Annonce(listOf(m, m.copy(joueurId = 2, cause = CauseDeMort.CHAGRIN)), Moment.MATIN)))
+        assertEquals("Léa était la Voyante, mort de chagrin", Bilan.ligne(m.copy(cause = CauseDeMort.CHAGRIN)))
+        assertNull(Bilan.sauvetage(Etape.Annonce(listOf(m), Moment.MATIN)))
+    }
+
+    @Test
+    fun `sans potion de vie le matin ne parle pas de sauvetage`() {
+        val p = partie(Role.LOUP_GAROU, Role.LOUP_GAROU, Role.SORCIERE, Role.VILLAGEOIS, Role.VILLAGEOIS)
+        p.jusqua<Etape.AppelLoups>()
+        p.jouer(Action.ChoixLoups(3))
+        p.jouer(Action.ChoixSorciere(guerir = false, empoisonner = null))
+        assertFalse((p.etape as Etape.Annonce).sauvee)
     }
 
     @Test

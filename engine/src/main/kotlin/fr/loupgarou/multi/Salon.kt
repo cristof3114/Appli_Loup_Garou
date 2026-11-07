@@ -1,5 +1,6 @@
 package fr.loupgarou.multi
 
+import fr.loupgarou.engine.Bilan
 import fr.loupgarou.engine.Action
 import fr.loupgarou.engine.Camp
 import fr.loupgarou.engine.CauseDeMort
@@ -400,20 +401,12 @@ class Salon(private val hasard: Random = Random) {
             is Etape.AppelFictif -> dodo(j)
             is Etape.Annonce -> ecran(
                 "jour",
-                when {
-                    e.morts.isEmpty() -> "Personne n'est mort cette nuit"
-                    j.id in e.morts.map { it.joueurId } -> "Tu es mort"
-                    else -> "Le village pleure"
-                },
+                if (j.id in e.morts.map { it.joueurId }) "Tu es mort" else Bilan.titre(e),
                 buildList {
+                    if (j.id in e.morts.map { it.joueurId }) add(Bilan.titre(e))
+                    Bilan.sauvetage(e)?.let(::add)
                     if (e.moment != fr.loupgarou.engine.Moment.MATIN) dernierDecompte?.let { add("Votes\u00A0: $it") }
-                    e.morts.forEach { m ->
-                        add("${m.nom} était ${article(m.role)}" + when (m.cause) {
-                            CauseDeMort.CHAGRIN -> ", mort de chagrin"
-                            CauseDeMort.CHASSEUR -> ", abattu par le Chasseur"
-                            else -> ""
-                        })
-                    }
+                    e.morts.forEach { add(Bilan.ligne(it)) }
                     if (j.id in e.morts.map { it.joueurId }) add("Tu ne peux plus parler, mais tu peux tout regarder.")
                 },
                 image = if (e.morts.isEmpty()) "embleme_village" else "fantome",
@@ -613,16 +606,7 @@ class Salon(private val hasard: Random = Random) {
         else -> false
     }
 
-    private fun article(r: Role) = when (r) {
-        Role.LOUP_GAROU -> "un Loup-Garou"
-        Role.VILLAGEOIS -> "un Simple Villageois"
-        Role.VOYANTE -> "la Voyante"
-        Role.CHASSEUR -> "le Chasseur"
-        Role.CUPIDON -> "Cupidon"
-        Role.SORCIERE -> "la Sorcière"
-        Role.VOLEUR -> "le Voleur"
-        Role.PETITE_FILLE -> "la Petite fille"
-    }
+    private fun article(r: Role) = Bilan.article(r)
 
     companion object {
         const val MAX_JOUEURS = 24
