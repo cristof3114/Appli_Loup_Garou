@@ -38,6 +38,10 @@ class Portail(
             change()
             Reponse.json(salon.vue(r.parametres["j"]))
         }
+        r.chemin == "/meute" && r.methode == "POST" -> executer {
+            salon.ecrireMeute(r.parametres["j"], r.parametres["t"].orEmpty())
+            Reponse.json(salon.vue(r.parametres["j"]))
+        }
         else -> Reponse.introuvable()
     }
 }

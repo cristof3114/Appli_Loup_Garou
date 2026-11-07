@@ -219,6 +219,91 @@ class SalonTest {
     }
 
     @Test
+    fun `la meute discute en secret pendant son tour et garde la discussion`() {
+        val (salon, _) = salonPret()
+        val p = salon.partie!!
+        fun idDe(r: Role) = p.joueurs.first { it.role == r }.id
+        val loups = p.joueurs.filter { it.role == Role.LOUP_GAROU }.map { it.id }
+        val villageois = p.joueurs.filter { !it.role.estLoup }.map { it.id }
+        val l0 = salon.jeton(loups[0])
+        val l1 = salon.jeton(loups[1])
+
+        // Avant le tour des loups, personne ne peut écrire.
+        assertFalse(salon.ecrireMeute(l0, "trop tôt"))
+        val cupidon = idDe(Role.CUPIDON)
+        // Cupidon unit les deux loups : personne ne mourra de chagrin pendant le test.
+        salon.appui(salon.jeton(cupidon), "cupidon", loups[0], loups[1])
+        p.joueurs.forEach { salon.appui(salon.jeton(it.id), "lu") }
+        salon.appui(salon.jeton(idDe(Role.VOYANTE)), "sonder", loups[0])
+        salon.appui(salon.jeton(idDe(Role.VOYANTE)), "ok")
+        assertTrue(p.etape is Etape.AppelLoups)
+
+        // Un loup écrit, l'autre lit ; un villageois ne peut ni écrire ni lire.
+        assertTrue(salon.ecrireMeute(l0, "  On mange   la Sorcière ?  "))
+        assertFalse(salon.ecrireMeute(l0, "   "))
+        assertFalse(salon.ecrireMeute(salon.jeton(villageois[0]), "Je suis un loup"))
+        assertFalse(salon.ecrireMeute("inconnu", "coucou"))
+        @Suppress("UNCHECKED_CAST")
+        fun messages(j: String) = (salon.vueMap(j)["meute"] as Map<String, Any?>)["messages"] as List<Map<String, Any?>>
+        val vus = messages(l1)
+        assertEquals(1, vus.size)
+        assertEquals("On mange la Sorcière ?", vus[0]["texte"])
+        assertEquals(false, vus[0]["moi"])
+        assertEquals(true, messages(l0)[0]["moi"])
+        assertNull(salon.vueMap(salon.jeton(villageois[0]))["meute"])
+        assertTrue(salon.ecrireMeute(l1, "x".repeat(500)))
+        assertEquals(Salon.MAX_MESSAGE, (messages(l0)[1]["texte"] as String).length)
+
+        // Écrire ne change pas l'écran : un appui sur « Dévorer » reste valable.
+        val cle = salon.cle(l0)
+        salon.ecrireMeute(l1, "D'accord")
+        assertEquals(cle, salon.cle(l0))
+        assertFalse(salon.attenteTablette().joinToString().contains("Sorcière ?"))
+
+        loups.forEach { salon.appui(salon.jeton(it), "devorer", idDe(Role.SORCIERE)) }
+        assertFalse(salon.ecrireMeute(l0, "après le tour"))
+        assertNull(salon.vueMap(l0)["meute"])
+        salon.appui(salon.jeton(idDe(Role.SORCIERE)), "sorciere")
+        // Le jour passe : un loup devient Capitaine, le village élimine Cupidon.
+        while (p.etape !is Etape.AppelLoups && p.etape !is Etape.Fin) {
+            val e = p.etape
+            val vivants = p.vivants().map { it.id }
+            when (e) {
+                Etape.ElectionCapitaine -> vivants.forEach { salon.appui(salon.jeton(it), "voter", loups[0]) }
+                is Etape.Vote -> vivants.forEach { salon.appui(salon.jeton(it), "voter", cupidon) }
+                is Etape.AppelVoyante -> salon.appui(salon.jeton(e.voyante), "sonder", idDe(Role.CHASSEUR))
+                else -> p.jouer(Action.Ok)
+            }
+        }
+        // Deuxième nuit : la discussion de la veille est toujours là.
+        assertTrue(p.etape is Etape.AppelLoups)
+        assertEquals(3, messages(l0).size)
+        assertEquals(1, messages(l0)[0]["nuit"])
+        assertTrue(salon.ecrireMeute(l1, "Rebelote"))
+        assertEquals(2, messages(l0).last()["nuit"])
+
+        // Nouvelle partie : la discussion est effacée.
+        salon.rejouer()
+        assertFalse(salon.ecrireMeute(l0, "encore là ?"))
+    }
+
+    @Test
+    fun `un loup seul n'a pas de messagerie`() {
+        val salon = Salon(Random(2))
+        val jetons = listOf("Ana", "Bob", "Chloé", "Dan").map { salon.rejoindre(it).getOrThrow().jeton }
+        salon.distribuer(listOf(Role.LOUP_GAROU, Role.VILLAGEOIS, Role.VILLAGEOIS, Role.VILLAGEOIS))
+        jetons.forEach {
+            salon.recevoir(it, "revelation", "reveler", emptyList())
+            salon.recevoir(it, "revelation", "cacher", emptyList())
+        }
+        val p = salon.commencer()
+        while (p.etape !is Etape.AppelLoups) p.jouer(Action.Ok)
+        val loup = salon.jeton(p.joueurs.first { it.role == Role.LOUP_GAROU }.id)
+        assertNull(salon.vueMap(loup)["meute"])
+        assertFalse(salon.ecrireMeute(loup, "Il y a quelqu'un ?"))
+    }
+
+    @Test
     fun `les téléphones passent par le petit serveur web`() {
         val salon = Salon(Random(1))
         val portail = Portail(
