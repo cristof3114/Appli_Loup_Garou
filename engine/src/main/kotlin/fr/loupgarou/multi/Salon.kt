@@ -4,6 +4,8 @@ import fr.loupgarou.engine.Bilan
 import fr.loupgarou.engine.Action
 import fr.loupgarou.engine.Camp
 import fr.loupgarou.engine.CauseDeMort
+import fr.loupgarou.engine.Composition
+import fr.loupgarou.engine.Eventail
 import fr.loupgarou.engine.Etape
 import fr.loupgarou.engine.Joueur
 import fr.loupgarou.engine.Partie
@@ -34,6 +36,9 @@ class Salon(private val hasard: Random = Random) {
     var partie: Partie? = null
         private set
     var paquet: List<Role> = emptyList()
+        private set
+    /** Non nul quand la composition est cachée (Chaos) : c'est tout ce que les joueurs en savent. */
+    var eventail: Eventail? = null
         private set
     private var roles = mapOf<Int, Role>()
     private var centre = listOf<Role>()
@@ -89,8 +94,12 @@ class Salon(private val hasard: Random = Random) {
     }
 
     /** L'appli tire les rôles au hasard ; chacun va découvrir le sien sur son téléphone. */
-    fun distribuer(paquet: List<Role>) {
+    fun distribuer(paquet: List<Role>) = distribuer(Composition(paquet))
+
+    fun distribuer(composition: Composition) {
         check(phase == Phase.INSCRIPTION)
+        val paquet = composition.paquet
+        eventail = composition.eventail
         val (tires, reste) = Setup.tirerRoles(paquet, _places.size, hasard)
         this.paquet = paquet
         roles = _places.mapIndexed { i, p -> p.id to tires[i] }.toMap()
@@ -108,7 +117,7 @@ class Salon(private val hasard: Random = Random) {
     fun commencer(): Partie {
         check(phase == Phase.REVELATION)
         val joueurs = _places.map { Joueur(it.id, it.nom, roles.getValue(it.id)) }
-        val p = Partie(joueurs, paquet, centre)
+        val p = Partie(joueurs, paquet, centre, eventail?.roles ?: paquet.toSet())
         partie = p
         phase = Phase.JEU
         etapeSuivie = null
@@ -153,8 +162,8 @@ class Salon(private val hasard: Random = Random) {
         "rapides" to buildList {
             add("D'accord")
             add("Pas lui")
-            if (Role.VOYANTE in p.paquet) add("Je pense que c'est la Voyante")
-            if (Role.SORCIERE in p.paquet) add("Méfiance, la Sorcière veille")
+            if (Role.VOYANTE in p.rolesPossibles) add("Je pense que c'est la Voyante")
+            if (Role.SORCIERE in p.rolesPossibles) add("Méfiance, la Sorcière veille")
             add("On se dépêche")
         },
     )
@@ -206,7 +215,7 @@ class Salon(private val hasard: Random = Random) {
                 val cible = choix.singleOrNull()?.takeIf { vivant(p, it) } ?: return null
                 when (action) {
                     "devorer" -> propositions[j.id] = Proposition(cible, false)
-                    "surprise" -> if (Role.PETITE_FILLE in p.paquet) propositions[j.id] = Proposition(cible, true) else return null
+                    "surprise" -> if (Role.PETITE_FILLE in p.rolesPossibles) propositions[j.id] = Proposition(cible, true) else return null
                     else -> return null
                 }
                 val accord = e.loups.map { propositions[it] }.distinct().singleOrNull()
@@ -303,19 +312,21 @@ class Salon(private val hasard: Random = Random) {
             )
             Phase.REVELATION -> revelation(moi)
             Phase.JEU -> enJeu(moi, partie!!)
-        } + ("moi" to fiche(moi)) + ("roles" to lesRoles())
+        } + ("moi" to fiche(moi)) + ("roles" to lesRoles()) + ("compositionCachee" to (eventail != null))
     }
 
     /**
      * L'explication de chaque rôle en jeu (tous les rôles tant que la composition n'est pas
-     * choisie), consultable par tous : la composition est publique.
+     * choisie), consultable par tous : la composition est publique. Quand elle est cachée (Chaos),
+     * on montre tous les rôles possibles, sans leur nombre.
      */
     fun lesRoles(): List<Map<String, Any?>> {
-        val enJeu = paquet.distinct().sortedBy { it.ordinal }.ifEmpty { Role.entries }
+        val cache = eventail
+        val enJeu = (cache?.roles?.toList() ?: paquet.distinct()).sortedBy { it.ordinal }.ifEmpty { Role.entries }
         return enJeu.map { r ->
             mapOf(
                 "role" to r.nom,
-                "nombre" to paquet.count { it == r },
+                "nombre" to if (cache != null) 0 else paquet.count { it == r },
                 "camp" to Fiches.camp(r),
                 "image" to Fiches.embleme(r),
                 "fiche" to Fiches.fiche(r),
@@ -414,7 +425,7 @@ class Salon(private val hasard: Random = Random) {
                     image = "embleme_meute",
                     choix = choix(vivants, marques = marques),
                     boutons = listOf(bouton("Dévorer {nom}", "devorer", "requis", "Touche un joueur")) +
-                        if (Role.PETITE_FILLE in p.paquet) {
+                        if (Role.PETITE_FILLE in p.rolesPossibles) {
                             listOf(bouton("{nom} est la Petite fille, on l'a surprise\u00A0!", "surprise", "requis", "Petite fille surprise\u00A0? Touche-la", discret = true))
                         } else emptyList(),
                 )
@@ -545,10 +556,11 @@ class Salon(private val hasard: Random = Random) {
         )
     }
 
-    /** La composition est publique : chacun peut savoir quels rôles sont en jeu. */
-    fun composition(): String = paquet.groupingBy { it }.eachCount().entries
-        .sortedBy { it.key.ordinal }
-        .joinToString(", ") { (r, n) -> if (n > 1) "$n × ${r.nom}" else r.nom }
+    /** La composition est publique : chacun peut savoir quels rôles sont en jeu. En Chaos, seul l'éventail est connu. */
+    fun composition(): String = eventail?.let { "Composition cachée : ${it.texte()}." }
+        ?: ("En jeu : " + paquet.groupingBy { it }.eachCount().entries
+            .sortedBy { it.key.ordinal }
+            .joinToString(", ") { (r, n) -> if (n > 1) "$n × ${r.nom}" else r.nom })
 
     // --- Ce que montre la tablette ---
 

@@ -2,6 +2,9 @@ package fr.loupgarou.multi
 
 import fr.loupgarou.engine.Action
 import fr.loupgarou.engine.Camp
+import fr.loupgarou.engine.Composition
+import fr.loupgarou.engine.Reglages
+import fr.loupgarou.engine.TypeDePartie
 import fr.loupgarou.engine.Etape
 import fr.loupgarou.engine.Role
 import fr.loupgarou.engine.Setup
@@ -343,5 +346,25 @@ class SalonTest {
     @Test
     fun `le JSON échappe les caractères spéciaux`() {
         assertEquals("""{"a":"x\"y\n","b":[1,true,null]}""", Json.ecrire(mapOf("a" to "x\"y\n", "b" to listOf(1, true, null))))
+    }
+
+    @Test
+    fun `en Chaos les telephones ne voient que l'eventail, et la nuit appelle tous les roles`() {
+        val salon = Salon(Random(3))
+        val jetons = noms.map { salon.rejoindre(it).getOrThrow().jeton }
+        val chaos = Composition.pour(noms.size, Reglages(TypeDePartie.CHAOS), Random(5))
+        salon.distribuer(chaos)
+        assertTrue(salon.composition().startsWith("Composition cachée"))
+        assertTrue(salon.lesRoles().all { it["nombre"] == 0 })
+        assertEquals(Role.entries.size + 1, salon.lesRoles().size)
+        assertEquals(true, salon.vueMap(jetons[0])["compositionCachee"])
+        jetons.forEach {
+            salon.recevoir(it, "revelation", "reveler", emptyList())
+            salon.recevoir(it, "revelation", "cacher", emptyList())
+        }
+        val p = salon.commencer()
+        assertEquals(Role.entries.toSet(), p.rolesPossibles)
+        // Le Voleur est toujours dans le paquet Chaos : la première nuit commence par lui, vrai ou fictif.
+        assertTrue(p.etape is Etape.AppelVoleur || p.etape == Etape.AppelFictif(fr.loupgarou.engine.Appel.VOLEUR))
     }
 }

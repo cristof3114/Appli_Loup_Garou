@@ -7,28 +7,18 @@ object Setup {
     fun taillePaquet(nbJoueurs: Int, paquetAvecVoleur: Boolean) =
         if (paquetAvecVoleur) nbJoueurs + 2 else nbJoueurs
 
-    /** Composition proposée par défaut selon le nombre de joueurs (sans Voleur). */
-    fun compositionProposee(nbJoueurs: Int): List<Role> {
-        require(nbJoueurs >= 4) { "Il faut au moins 4 joueurs" }
-        val nbLoups = when {
-            nbJoueurs <= 7 -> 2
-            nbJoueurs <= 11 -> 3
-            else -> 4
-        }
-        val speciaux = listOf(
-            Role.VOYANTE, Role.SORCIERE, Role.CHASSEUR, Role.CUPIDON, Role.PETITE_FILLE,
-        ).take((nbJoueurs - nbLoups - 1).coerceAtLeast(1))
-        val villageois = nbJoueurs - nbLoups - speciaux.size
-        return List(nbLoups) { Role.LOUP_GAROU } + speciaux + List(villageois) { Role.VILLAGEOIS }
-    }
+    /** Composition proposée par défaut selon le nombre de joueurs (Classique, sans Voleur). */
+    fun compositionProposee(nbJoueurs: Int): List<Role> = Composition.pour(nbJoueurs, Reglages()).paquet
 
     /** Problèmes de composition par rapport à la version jouable minimum de la règle. */
-    fun avertissements(paquet: List<Role>, nbJoueurs: Int): List<String> = buildList {
+    fun avertissements(paquet: List<Role>, nbJoueurs: Int, unSeulLoupPermis: Boolean = false): List<String> = buildList {
         val avecVoleur = Role.VOLEUR in paquet
         if (paquet.size != taillePaquet(nbJoueurs, avecVoleur)) {
             add("Le paquet doit compter ${taillePaquet(nbJoueurs, avecVoleur)} cartes pour $nbJoueurs joueurs")
         }
-        if (paquet.count { it == Role.LOUP_GAROU } < 2) add("Il faut au moins 2 Loups-Garous")
+        val loups = paquet.count { it == Role.LOUP_GAROU }
+        val minimum = if (unSeulLoupPermis && nbJoueurs in Composition.JOUEURS_UN_LOUP) 1 else 2
+        if (loups < minimum) add(if (minimum == 1) "Il faut au moins 1 Loup-Garou" else "Il faut au moins 2 Loups-Garous")
         if (Role.VOYANTE !in paquet) add("Il faut une Voyante")
         Role.entries.filter { it != Role.LOUP_GAROU && it != Role.VILLAGEOIS }
             .filter { r -> paquet.count { it == r } > 1 }

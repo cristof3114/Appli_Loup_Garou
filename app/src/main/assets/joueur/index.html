@@ -253,10 +253,11 @@
       if (m.amoureux) s.appendChild(el("p", { texte: "❤ " + m.amoureux }));
       if (m.capitaine) s.appendChild(el("p", { texte: "★ " + m.capitaine }));
       f.appendChild(s);
-      if (m.composition) f.appendChild(el("section", {}, [el("p", { texte: "En jeu : " + m.composition })]));
+      if (m.composition) f.appendChild(el("section", {}, [el("p", { texte: m.composition })]));
       f.appendChild(el("p", { classe: "centre", texte: "Cache bien ton écran pendant que tu lis." }));
     } else {
-      f.appendChild(el("h1", { texte: "Les rôles en jeu", style: "text-align:center" }));
+      f.appendChild(el("h1", { texte: vue.compositionCachee ? "Les rôles possibles" : "Les rôles en jeu", style: "text-align:center" }));
+      if (vue.compositionCachee) f.appendChild(el("p", { classe: "centre", texte: "Partie Chaos : personne ne sait lesquels sont vraiment là, ni combien de loups rôdent." }));
       (vue.roles || []).forEach(function (r) {
         var s = el("section", {}, [
           el("h2", {}, [el("img", { src: "/f/" + r.image + ".webp", alt: "" }), el("span", { texte: r.role + (r.nombre > 1 ? " × " + r.nombre : "") })]),

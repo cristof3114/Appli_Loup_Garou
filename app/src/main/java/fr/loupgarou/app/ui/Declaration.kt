@@ -31,7 +31,7 @@ fun EcranDeclaration(vm: PartieViewModel) {
             }
             1 -> {
                 Titre("$nom, quelle carte as-tu reçue ?")
-                vm.paquet.distinct().forEach { role ->
+                vm.composition().rolesPossibles.sortedBy { it.ordinal }.forEach { role ->
                     GrosBouton(role.nom) { choisi = role; phase = 2 }
                 }
             }
