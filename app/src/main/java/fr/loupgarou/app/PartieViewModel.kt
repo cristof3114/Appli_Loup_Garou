@@ -168,7 +168,8 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
                 listOf(Narration.appel(appel))
             }
             apres is Etape.VisionVoyante -> emptyList()
-            else -> Narration.jour(apres)
+            // Victoire anticipée des loups : un villageois est encore debout, on ne dit pas « plus personne à manger ».
+            else -> Narration.jour(apres, villageoisDebout = partie?.vivants()?.any { !it.role.estLoup } == true)
         }
         commencerTransition(dit, paroles)
     }

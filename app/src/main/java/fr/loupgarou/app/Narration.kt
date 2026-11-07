@@ -62,22 +62,27 @@ object Narration {
     fun relanceDebat() = une(Repliques.relanceDebat)
 
     /** Ce que dit le narrateur en arrivant sur une étape de jour (hors appels de nuit). */
-    fun jour(etape: Etape): List<Replique> = when (etape) {
+    fun jour(etape: Etape, villageoisDebout: Boolean = false): List<Replique> = when (etape) {
         is Etape.Annonce -> annonce(etape)
         is Etape.TirDuChasseur -> listOf(une(Repliques.chasseur))
         is Etape.SuccessionCapitaine -> listOf(une(Repliques.successionCapitaine))
         Etape.ElectionCapitaine -> listOf(une(Repliques.electionCapitaine))
         is Etape.Vote -> listOf(une(if (etape.revote) Repliques.egalite else Repliques.debutVote))
         is Etape.DepartageCapitaine -> listOf(une(Repliques.departageCapitaine))
-        is Etape.Fin -> listOf(fin(etape.gagnant))
+        is Etape.Fin -> listOf(fin(etape.gagnant, villageoisDebout))
         else -> emptyList()
     }
 
     private fun annonce(etape: Etape.Annonce): List<Replique> {
         val intro = when (etape.moment) {
-            Moment.MATIN -> une(if (etape.morts.isEmpty()) Repliques.matinPersonne else Repliques.matinMorts)
-            Moment.VOTE -> une(Repliques.condamne)
-            Moment.TIR_DU_CHASSEUR -> une(Repliques.tirDuChasseur)
+            Moment.MATIN -> buildList {
+                // L'ouverture, puis le nombre de morts dit clairement, puis le sauvetage éventuel.
+                add(une(if (etape.morts.isEmpty()) Repliques.matinPersonne else Repliques.matinMorts))
+                Repliques.nombreDeMorts[etape.morts.size.coerceAtMost(4)]?.let { add(une(it)) }
+                if (etape.sauvee) add(une(Repliques.sauvetage))
+            }
+            Moment.VOTE -> listOf(une(Repliques.condamne))
+            Moment.TIR_DU_CHASSEUR -> listOf(une(Repliques.tirDuChasseur))
         }
         val morts = etape.morts.flatMap { m ->
             listOfNotNull(
@@ -85,8 +90,15 @@ object Narration {
                 une(Repliques.revelation.getValue(m.role)),
             )
         }
-        return listOf(intro) + morts
+        return intro + morts
     }
 
-    fun fin(camp: Camp): Replique = une(Repliques.fin.getValue(camp))
+    /**
+     * Quand les loups gagnent avant d'avoir mangé le dernier villageois (victoire anticipée),
+     * on écarte la réplique « il ne reste plus personne à manger ».
+     */
+    fun fin(camp: Camp, villageoisDebout: Boolean = false): Replique {
+        val toutes = Repliques.fin.getValue(camp)
+        return une(if (villageoisDebout) toutes.filter { it.son != R.raw.v20_04 }.ifEmpty { toutes } else toutes)
+    }
 }

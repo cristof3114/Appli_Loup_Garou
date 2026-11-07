@@ -98,15 +98,29 @@ object Repliques {
         Replique("Réveillez-vous. Enfin, ceux qui le peuvent encore.", R.raw.v09_09),
         Replique("Le jour se lève, et avec lui, une odeur qui ne trompe pas.", R.raw.v09_10),
     )
+    // Les loups désignent toujours une victime : un matin sans mort veut dire que la Sorcière l'a
+    // sauvée. Pas de phrase qui ferait croire que les loups n'ont pas attaqué.
     val matinPersonne = listOf(
-        Replique("Le village se réveille… au complet. Les loups ont eu une nuit difficile.", R.raw.v10_01),
         Replique("Le soleil se lève et, miracle, personne ne manque à l'appel.", R.raw.v10_02),
         Replique("C'est le matin. Tout le monde est là. Étrange… et un peu décevant.", R.raw.v10_03),
         Replique("Réveillez-vous. Personne n'est mort cette nuit. Ne vous habituez pas.", R.raw.v10_04),
         Replique("Le village s'éveille, entier. Quelqu'un, quelque part, a été bien inspiré.", R.raw.v10_05),
-        Replique("Le jour se lève sans cadavre. Les loups ont jeûné. Ils seront d'autant plus affamés.", R.raw.v10_06),
         Replique("Ouvrez les yeux. Pas une goutte de sang. Pour l'instant.", R.raw.v10_07),
         Replique("Le coq chante pour tout le monde, ce matin. Profitez-en.", R.raw.v10_08),
+    )
+    /** Le nombre de morts du matin, dit juste après l'ouverture. */
+    val nombreDeMorts: Map<Int, List<Replique>> = mapOf(
+        1 to listOf(Replique("Une victime, cette nuit.", R.raw.v21_01), Replique("La nuit a pris quelqu'un. Un seul. Cette fois.", R.raw.v21_02)),
+        2 to listOf(Replique("Deux victimes, cette nuit.", R.raw.v21_03), Replique("Deux corps, ce matin. La nuit a été chargée.", R.raw.v21_04)),
+        3 to listOf(Replique("Trois victimes. La nuit n'a fait aucun quartier.", R.raw.v21_05)),
+        4 to listOf(Replique("Quatre victimes. Thiercelieux se vide à vue d'œil.", R.raw.v21_06)),
+    )
+    /** La Sorcière a sauvé la victime des loups : on le dit, sans dire qui était visé. */
+    val sauvetage = listOf(
+        Replique("Les loups ont pourtant frappé. Mais leur victime a été sauvée.", R.raw.v22_01),
+        Replique("Les crocs ont bien mordu… et une potion a tout réparé.", R.raw.v22_02),
+        Replique("Les loups avaient choisi une proie. Ce matin, elle respire encore.", R.raw.v22_03),
+        Replique("Quelqu'un revient de très loin, cette nuit. Sans même le savoir.", R.raw.v22_04),
     )
     val electionCapitaine = listOf(
         Replique("Avant toute chose, le village doit se choisir un Capitaine. Sa voix comptera double.", R.raw.v11_01),
