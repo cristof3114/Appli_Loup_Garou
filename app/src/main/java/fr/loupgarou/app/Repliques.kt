@@ -39,6 +39,11 @@ object Repliques {
         Replique("Cupidon a tiré ses flèches. Reste à savoir qui elles ont transpercé. Premier joueur inscrit, ouvre les yeux et prends la tablette. Chacun son tour : lis ton secret, referme les yeux, et passe-la à ton voisin de gauche. Le dernier la repose au centre. En silence : un cœur qui bat trop fort, ça s'entend.", R.raw.v04_01),
         Replique("Les flèches sont parties. Avant que les loups ne rôdent, la tablette va faire le tour du village. Premier joueur inscrit, ouvre les yeux et prends-la. Lis ton secret sans un bruit, referme les yeux, puis passe-la à ton voisin de gauche. Le dernier la repose au centre. Et surtout, gardez une tête d'enterrement. C'est de saison.", R.raw.v04_02),
     )
+    /** Mode « chacun son téléphone » : tout le monde lit son secret en même temps, sur son téléphone. */
+    val amoureuxTelephones = listOf(
+        Replique("Cupidon a tiré ses flèches. Tout le village, ouvrez les yeux, et lisez en secret votre téléphone. Amoureux ou pas, gardez un visage de marbre. Puis refermez les yeux.", R.raw.v04_03),
+        Replique("Les flèches sont parties. Chacun ouvre les yeux sur son téléphone, et lit son secret, sans un bruit. Un cœur qui bat trop fort, ça s'entend. Puis, refermez les yeux.", R.raw.v04_04),
+    )
     val voyante = listOf(
         Replique("La Voyante se réveille. Choisis l'âme que tu veux sonder.", R.raw.v05_01),
         Replique("Voyante, ouvre les yeux. Ta boule de cristal a faim de vérité.", R.raw.v05_02),

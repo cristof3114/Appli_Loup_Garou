@@ -48,7 +48,7 @@ object Narration {
         when (appel) {
             Appel.VOLEUR -> Repliques.voleur
             Appel.CUPIDON -> Repliques.cupidon
-            Appel.AMOUREUX -> Repliques.amoureux
+            Appel.AMOUREUX -> if (multi) Repliques.amoureuxTelephones else Repliques.amoureux
             Appel.VOYANTE -> Repliques.voyante
             Appel.LOUPS -> Repliques.loups
             Appel.SORCIERE -> Repliques.sorciere
