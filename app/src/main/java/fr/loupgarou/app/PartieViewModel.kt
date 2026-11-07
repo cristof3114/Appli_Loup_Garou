@@ -165,9 +165,7 @@ class PartieViewModel(application: Application) : AndroidViewModel(application) 
         paroles = when {
             appel != null -> {
                 if (avant == null || !deNuit(avant)) dit += Narration.endort()
-                // Les répliques enregistrées des Amoureux parlent de faire passer la tablette :
-                // avec les téléphones, chacun lit son secret en silence.
-                if (multi != null && appel == Appel.AMOUREUX) emptyList() else listOf(Narration.appel(appel))
+                listOf(Narration.appel(appel))
             }
             apres is Etape.VisionVoyante -> emptyList()
             // Victoire anticipée des loups : un villageois est encore debout, on ne dit pas « plus personne à manger ».
